@@ -1,0 +1,271 @@
+# -----------------------------------------------------------------------------
+# Dependencies & package managers
+# -----------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnpm-store/
+.pnpm-debug.log*
+
+
+# -----------------------------------------------------------------------------
+# Build & framework output (Astro / Vite)
+# -----------------------------------------------------------------------------
+dist/
+.astro/
+.vercel/
+.netlify/
+.output/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+
+# -----------------------------------------------------------------------------
+# Environment & secrets
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+
+# Local credential / key material (deploy keys, TLS, signing)
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.keystore
+.secrets/
+secrets/
+
+
+# -----------------------------------------------------------------------------
+# Logs & diagnostics
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+*.cpuprofile
+*.heapsnapshot
+*.heapprofile
+
+
+# -----------------------------------------------------------------------------
+# Test & quality tooling
+# -----------------------------------------------------------------------------
+# Vitest
+coverage/
+.nyc_output/
+.vitest/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+trace.zip
+*.trace.zip
+
+# Lighthouse CI (local runs / PR artifacts)
+.lighthouseci/
+
+# ESLint / Prettier caches
+.eslintcache
+.prettiercache
+.stylelintcache
+
+
+# -----------------------------------------------------------------------------
+# Bundle & performance analysis (rollup-plugin-visualizer, etc.)
+# -----------------------------------------------------------------------------
+stats.html
+bundle-stats.html
+bundle-report.html
+*.bundle-analysis.html
+lighthouse-report/
+lighthouse*.html
+lighthouse*.json
+
+
+# -----------------------------------------------------------------------------
+# Error tracking & observability (local CLI config may hold auth tokens)
+# -----------------------------------------------------------------------------
+.sentryclirc
+.sentry-native/
+
+
+# -----------------------------------------------------------------------------
+# 3D / media pipeline (authoring & intermediate — not deploy artifacts)
+# -----------------------------------------------------------------------------
+# Raw or unoptimized exports from Blender/Maya/etc. Keep optimized glTF/KTX2
+# in public/ when intentionally versioned; park heavy WIP here.
+.asset-pipeline/
+.gltf-cache/
+*.blend1
+*.blend2
+*.max
+*.ma
+*.mb
+*.c4d
+# Uncompressed interchange blobs (prefer committed optimized outputs)
+*.glb.raw
+*.gltf.raw
+
+
+# -----------------------------------------------------------------------------
+# Future CMS / admin uploads (Directus, Keystatic media, etc.)
+# -----------------------------------------------------------------------------
+uploads/
+public/uploads/
+.keystatic/
+.directus/
+
+
+# -----------------------------------------------------------------------------
+# Docker & local orchestration (deferred stack paths)
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+*.dockerfile.local
+
+
+# -----------------------------------------------------------------------------
+# Deployment & release artifacts (rsync targets, local deploy bundles)
+# -----------------------------------------------------------------------------
+releases/
+.deploy/
+deploy-bundle/
+*.deploy.tar
+*.deploy.tar.gz
+
+
+# -----------------------------------------------------------------------------
+# OS-generated files
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+
+# -----------------------------------------------------------------------------
+# Editors & IDEs
+# -----------------------------------------------------------------------------
+# VS Code — ignore personal workspace state; keep shared recommendations
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Visual Studio
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# Sublime / Nova
+*.sublime-workspace
+*.sublime-project
+
+# Cursor — full directory (rules, plans, local agent state)
+.cursor/
+
+
+# -----------------------------------------------------------------------------
+# AI / agent context (local-only; not part of shipped site)
+# -----------------------------------------------------------------------------
+AGENTS-*
+AGENTS.*
+.cursorrules
+.cursorignore
+.claude/
+.claudeignore
+.aider*
+.continue/
+.windsurfrules
+.copilot/
+
+
+# -----------------------------------------------------------------------------
+# Misc tooling caches
+# -----------------------------------------------------------------------------
+.cache/
+.parcel-cache/
+.turbo/
+.swc/
+.dccache
+.temp/
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+
+# -----------------------------------------------------------------------------
+# Optional local overrides (uncomment if used)
+# -----------------------------------------------------------------------------
+# .nvmrc.local
+# .node-version.local
