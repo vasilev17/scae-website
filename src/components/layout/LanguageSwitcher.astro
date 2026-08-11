@@ -1,0 +1,32 @@
+---
+import {
+  getAlternateLocales,
+  getDictionary,
+  localeLabels,
+  localeUrl,
+  type Locale,
+} from '@/i18n';
+
+type Props = {
+  locale: Locale;
+  /** Path without locale prefix, e.g. `/our-work/`. */
+  path?: string;
+};
+
+const { locale, path = '/' } = Astro.props;
+const t = getDictionary(locale);
+---
+
+<nav aria-label={t.nav.switchLanguage} class="flex items-center gap-2 text-sm">
+  {
+    getAlternateLocales(locale).map((alternate) => (
+      <a
+        href={localeUrl(alternate, path)}
+        hreflang={alternate}
+        class="border-border text-muted hover:border-accent hover:text-foreground rounded-md border px-3 py-1.5 transition-colors"
+      >
+        {localeLabels[alternate]}
+      </a>
+    ))
+  }
+</nav>

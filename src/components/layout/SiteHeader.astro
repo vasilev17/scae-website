@@ -1,0 +1,27 @@
+---
+import LanguageSwitcher from '@/components/layout/LanguageSwitcher.astro';
+import { getDictionary, localeUrl, type Locale } from '@/i18n';
+
+type Props = {
+  locale: Locale;
+  path?: string;
+};
+
+const { locale, path = '/' } = Astro.props;
+const t = getDictionary(locale);
+---
+
+<header class="border-border border-b">
+  <div
+    class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4"
+  >
+    <a
+      href={localeUrl(locale)}
+      class="font-semibold tracking-wide"
+      aria-label={t.nav.home}
+    >
+      {t.site.name}
+    </a>
+    <LanguageSwitcher locale={locale} path={path} />
+  </div>
+</header>

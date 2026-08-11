@@ -1,3 +1,8 @@
+# SCAE Website — .gitignore
+# Commit: source, public assets, lockfile, .env.example, shared .vscode config, .nvmrc
+# Never commit: build output, deps, secrets, AI/agent docs, local IDE state
+
+
 # -----------------------------------------------------------------------------
 # Dependencies & package managers
 # -----------------------------------------------------------------------------
@@ -19,6 +24,7 @@ node_modules/
 # -----------------------------------------------------------------------------
 dist/
 .astro/
+.vite/
 .vercel/
 .netlify/
 .output/
@@ -36,6 +42,7 @@ next-env.d.ts
 !.env.example
 !.env.template
 !.env.sample
+*.local
 
 # Local credential / key material (deploy keys, TLS, signing)
 *.pem
@@ -75,12 +82,12 @@ coverage/
 .nyc_output/
 .vitest/
 
-# Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/
+# Playwright (paths work at repo root or nested)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/
 trace.zip
 *.trace.zip
 
@@ -119,6 +126,7 @@ lighthouse*.json
 # in public/ when intentionally versioned; park heavy WIP here.
 .asset-pipeline/
 .gltf-cache/
+*.blend
 *.blend1
 *.blend2
 *.max
@@ -204,7 +212,7 @@ $RECYCLE.BIN/
 *.iml
 *.ipr
 *.iws
-out/
+/out/
 
 # Visual Studio
 *.suo
@@ -219,7 +227,6 @@ out/
 # Vim / Emacs
 *.swp
 *.swo
-*~
 \#*\#
 /.emacs.desktop
 /.emacs.desktop.lock
@@ -235,6 +242,7 @@ out/
 # -----------------------------------------------------------------------------
 # AI / agent context (local-only; not part of shipped site)
 # -----------------------------------------------------------------------------
+AGENTS.md
 AGENTS-*
 AGENTS.*
 .cursorrules
@@ -262,6 +270,8 @@ temp/
 *.temp
 *.bak
 *.backup
+*.orig
+*.rej
 
 
 # -----------------------------------------------------------------------------

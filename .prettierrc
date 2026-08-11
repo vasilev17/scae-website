@@ -1,0 +1,14 @@
+{
+  "plugins": ["prettier-plugin-astro", "prettier-plugin-tailwindcss"],
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "overrides": [
+    {
+      "files": "*.astro",
+      "options": {
+        "parser": "astro"
+      }
+    }
+  ]
+}

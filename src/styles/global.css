@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: #07070c;
+  --color-foreground: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-accent: #60a5fa;
+  --color-border: #27272a;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground min-h-dvh font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-accent/30 text-foreground;
+  }
+}

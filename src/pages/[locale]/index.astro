@@ -1,0 +1,17 @@
+---
+import { getDictionary, localeStaticPaths, resolveLocale } from '@/i18n';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+export const getStaticPaths = localeStaticPaths;
+
+const locale = resolveLocale(Astro.params.locale);
+const t = getDictionary(locale);
+---
+
+<BaseLayout locale={locale} title={t.home.title}>
+  <section class="mx-auto max-w-5xl px-6 py-16">
+    <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">
+      {t.home.heading}
+    </h1>
+  </section>
+</BaseLayout>
