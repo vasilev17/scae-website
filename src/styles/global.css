@@ -7,6 +7,10 @@
   --color-accent: #60a5fa;
   --color-border: #27272a;
 
+  --color-gate-light: #d9d9d9;
+  --color-gate-dark: #737373;
+  --color-gate-shadow: #878787;
+
   --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
@@ -21,5 +25,161 @@
 
   ::selection {
     @apply bg-accent/30 text-foreground;
+  }
+}
+
+@layer components {
+  .gate-reveal {
+    --gate-notch: 3.7963cqh;
+    --gate-chamfer: calc(var(--gate-notch) * 43 / 41);
+    --gate-edge-left: 18.3333cqw;
+    --gate-edge-right: 81.6667cqw;
+    /* Where the panes meet, away from the centre notch: 497 of 1080. */
+    --gate-seam: 46.0185cqh;
+    --gate-top-height: calc(var(--gate-seam) + var(--gate-notch));
+    /* The logo is cut exactly on the seam, which the notch puts at its centre. */
+    --gate-logo-center: var(--gate-top-height);
+    --gate-logo-size: min(24.2593cqh, 40cqw);
+    /* Inner-edge treatment: offset 4px, blur 2px at 1080. */
+    --gate-edge-offset: 0.3704cqh;
+    --gate-edge-blur: 0.1852cqh;
+    /* Hides antialiasing along the closed seam(the top pane covers it) */
+    --gate-seam-overlap: 0.2cqh;
+    /* Distance from each viewport edge to that pane's furthest clip-path point
+       once the reveal settles. */
+    --gate-pane-depth-top: var(--gate-top-height);
+    --gate-pane-depth-bottom: calc(
+      var(--gate-seam) - var(--gate-seam-overlap) + var(--gate-notch)
+    );
+    --gate-rest-visible-top: 7.5cqh;
+    --gate-rest-visible-bottom: 5.5cqh;
+
+    container-type: size;
+  }
+
+  .gate-pane-group {
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+  }
+
+  /* The top pane paints last so its shadow falls across the closed seam. */
+  .gate-pane-group--top {
+    z-index: 1;
+  }
+
+  /* Shadow sits on a wrapper because filters run before clip-path. Per-pane
+     offsets aim at the inner seam edge, not a soft cast shadow. */
+  .gate-pane-shadow {
+    position: absolute;
+    inset: 0;
+  }
+
+  .gate-pane-group--top .gate-pane-shadow {
+    filter: drop-shadow(
+      0 var(--gate-edge-offset) var(--gate-edge-blur) var(--color-gate-shadow)
+    );
+  }
+
+  .gate-pane-group--bottom .gate-pane-shadow {
+    filter: drop-shadow(
+      0 calc(-1 * var(--gate-edge-offset)) var(--gate-edge-blur)
+        var(--color-gate-shadow)
+    );
+  }
+
+  .gate-pane {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background-image: var(--gate-metal), var(--gate-gradient);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+
+  .gate-pane--top {
+    --gate-gradient: linear-gradient(
+      to top,
+      var(--color-gate-light),
+      var(--color-gate-dark)
+    );
+
+    top: 0;
+    height: var(--gate-top-height);
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% calc(100% - var(--gate-notch)),
+      var(--gate-edge-right) calc(100% - var(--gate-notch)),
+      calc(var(--gate-edge-right) - var(--gate-chamfer)) 100%,
+      calc(var(--gate-edge-left) + var(--gate-chamfer)) 100%,
+      var(--gate-edge-left) calc(100% - var(--gate-notch)),
+      0 calc(100% - var(--gate-notch))
+    );
+  }
+
+  .gate-pane--bottom {
+    --gate-gradient: linear-gradient(
+      to bottom,
+      var(--color-gate-light),
+      var(--color-gate-dark)
+    );
+
+    top: calc(var(--gate-seam) - var(--gate-seam-overlap));
+    bottom: calc(var(--gate-edge-offset) * -1);
+    clip-path: polygon(
+      0 0,
+      var(--gate-edge-left) 0,
+      calc(var(--gate-edge-left) + var(--gate-chamfer)) var(--gate-notch),
+      calc(var(--gate-edge-right) - var(--gate-chamfer)) var(--gate-notch),
+      var(--gate-edge-right) 0,
+      100% 0,
+      100% 100%,
+      0 100%
+    );
+  }
+
+  /* Both halves sit at the same viewport position and are cut at the logo's own
+     midline; each one rides its pane because the pane group is what moves. */
+  .gate-logo {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--gate-logo-center) - var(--gate-logo-size) / 2);
+    width: var(--gate-logo-size);
+    height: var(--gate-logo-size);
+    transform: translateX(-50%);
+  }
+
+  .gate-logo--top {
+    clip-path: inset(0 0 50% 0);
+  }
+
+  .gate-logo--bottom {
+    clip-path: inset(50% 0 0 0);
+  }
+
+  /* Without scripting the panes can never travel, so they are parked at their
+     resting positions instead of covering the page. Reduced motion lands here
+     too, so those users never see the gate paint over the content.
+     GateReveal applies the same values through GSAP. */
+  @media (scripting: none), (prefers-reduced-motion: reduce) {
+    .gate-pane-group--top {
+      transform: translateY(
+        calc(var(--gate-rest-visible-top) - var(--gate-pane-depth-top))
+      );
+    }
+
+    .gate-pane-group--bottom {
+      transform: translateY(
+        calc(
+          100cqh - var(--gate-pane-depth-bottom) -
+            var(--gate-rest-visible-bottom)
+        )
+      );
+    }
+
+    .gate-logo {
+      visibility: hidden;
+    }
   }
 }

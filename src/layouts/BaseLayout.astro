@@ -1,7 +1,6 @@
 ---
 import '@/styles/global.css';
 
-import SiteHeader from '@/components/layout/SiteHeader.astro';
 import {
   defaultLocale,
   getDictionary,
@@ -14,7 +13,7 @@ type Props = {
   locale: Locale;
   title: string;
   description?: string;
-  /** Path without locale prefix, e.g. `/our-work/`. */
+  // Path without locale prefix
   path?: string;
 };
 
@@ -57,7 +56,6 @@ const canonical = new URL(localeUrl(locale, path), Astro.site ?? Astro.url);
     <meta property="og:locale" content={locale} />
   </head>
   <body>
-    <SiteHeader locale={locale} path={path} />
     <main>
       <slot />
     </main>

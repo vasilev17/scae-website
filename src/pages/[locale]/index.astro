@@ -1,4 +1,8 @@
 ---
+import gateMetal from '@/assets/generated/gate-metal.webp';
+import scaeLogo from '@/assets/generated/scae-logo.webp';
+import { GateReveal } from '@/components/ui/GateReveal';
+import { Starfield } from '@/components/ui/Starfield';
 import { getDictionary, localeStaticPaths, resolveLocale } from '@/i18n';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 
@@ -8,10 +12,18 @@ const locale = resolveLocale(Astro.params.locale);
 const t = getDictionary(locale);
 ---
 
-<BaseLayout locale={locale} title={t.home.title}>
-  <section class="mx-auto max-w-5xl px-6 py-16">
-    <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">
-      {t.home.heading}
-    </h1>
+<BaseLayout locale={locale} title={t.site.name}>
+  <section
+    class="relative h-dvh w-full overflow-hidden bg-black"
+    aria-label={t.home.heading}
+  >
+    <Starfield
+      client:load
+      bgColor="rgba(0, 0, 0, 1)"
+      starColor="rgba(255, 255, 255, 1)"
+      speed={0.75}
+      quantity={400}
+    />
   </section>
+  <GateReveal client:load metalSrc={gateMetal.src} logoSrc={scaeLogo.src} />
 </BaseLayout>
