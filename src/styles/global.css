@@ -1,5 +1,22 @@
 @import 'tailwindcss';
 
+/* Subset from the licensed TTFs by scripts/build-fonts.py (Latin + Cyrillic). */
+@font-face {
+  font-family: 'Plateia';
+  src: url('../assets/generated/plateia-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Disket Mono';
+  src: url('../assets/generated/disket-mono-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-background: #07070c;
   --color-foreground: #f4f4f5;
@@ -7,20 +24,38 @@
   --color-accent: #60a5fa;
   --color-border: #27272a;
 
+  --color-glass: #26262b;
   --color-gate-light: #d9d9d9;
   --color-gate-dark: #737373;
   --color-gate-shadow: #878787;
 
+  --color-flag-white: #ffffff;
+  --color-flag-green: #00966e;
+  --color-flag-red: #d62612;
+
+  --color-cue-track: #404040;
+  --color-cue-pulse-tail: #999999;
+  --color-cue-pulse-head: #ffffff;
+
   --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plateia', var(--font-sans);
+  --font-mono: 'Disket Mono', ui-monospace, monospace;
 }
 
 @layer base {
   html {
-    @apply scroll-smooth;
+    @apply overflow-x-hidden scroll-smooth;
+    scrollbar-width: none;
   }
 
   body {
-    @apply bg-background text-foreground min-h-dvh font-sans antialiased;
+    @apply bg-background text-foreground min-h-dvh overflow-x-hidden font-sans antialiased;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
   }
 
   ::selection {
@@ -51,7 +86,9 @@
     --gate-pane-depth-bottom: calc(
       var(--gate-seam) - var(--gate-seam-overlap) + var(--gate-notch)
     );
-    --gate-rest-visible-top: 7.5cqh;
+    /* Deep enough for the navbar the top pane carries: the notch tip plus the
+       flat band the navbar occupies (--nav-band-height). */
+    --gate-rest-visible-top: 13.8cqh;
     --gate-rest-visible-bottom: 5.5cqh;
 
     container-type: size;
@@ -158,6 +195,453 @@
     clip-path: inset(50% 0 0 0);
   }
 
+  .gate-nav {
+    --nav-band-height: 10cqh;
+    --nav-button-height: 3.9cqh;
+    --nav-button-font: 1.35cqh;
+    --nav-icon-height: 1.35cqh;
+
+    position: absolute;
+    inset-inline: 0;
+    /* Sits on the flat part of the pane, above the notch. */
+    bottom: calc(100cqh - var(--gate-seam));
+    height: var(--nav-band-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: 1.9792cqw;
+    /* Revealed by GSAP once the panes have travelled out of view. */
+    opacity: 0;
+    pointer-events: auto;
+  }
+
+  /* Box metrics only: SpecularButton paints the glass fill and reads the
+     radius set here back into its shader. */
+  .gate-nav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8cqw;
+    height: var(--nav-button-height);
+    padding-inline: 1.2cqw;
+    border-radius: 0.7cqh;
+    box-shadow: 0 0.6cqh 2.8cqh rgb(33 33 33 / 0.22);
+    font-family: var(--font-display);
+    font-size: var(--nav-button-font);
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .gate-nav-button:focus-visible {
+    outline: 0.1852cqh solid var(--color-accent);
+    outline-offset: 0.2778cqh;
+  }
+
+  .gate-nav-button-icon {
+    display: block;
+    height: var(--nav-icon-height);
+    width: auto;
+  }
+
+  .gate-nav-button-dot {
+    display: block;
+    height: 0.65cqh;
+    width: 0.65cqh;
+  }
+
+  .gate-nav-brand {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: calc(var(--nav-band-height) * 0.02);
+    height: calc(var(--nav-band-height) * 0.899);
+  }
+
+  .gate-nav-logo {
+    display: block;
+    height: 100%;
+    width: calc(var(--nav-band-height) * 0.899);
+    object-fit: contain;
+  }
+
+  .gate-nav-title {
+    width: calc(var(--nav-band-height) * 3.081);
+    font-family: var(--font-display);
+    font-size: calc(var(--nav-band-height) * 0.169);
+    line-height: 1.2;
+    color: var(--color-flag-white);
+  }
+
+  .gate-nav-flag {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    gap: calc(var(--nav-band-height) * 0.027);
+    height: calc(var(--nav-band-height) * 0.0405);
+  }
+
+  .gate-nav-flag span {
+    flex: 1;
+  }
+
+  /* Narrow viewports cannot fit the wordmark beside the logo. */
+  @media (max-width: 64rem) {
+    .gate-nav-title {
+      display: none;
+    }
+  }
+
+  /* Navigation dial, revealed once the gate has shut behind it. The door is
+     the backdrop, so the overlay only darkens it enough for the dial to read
+     against brushed metal. */
+  .gate-menu {
+    /* Flat outer seam (497/1080) plus the centre notch depth (41/1080): the
+       recessed mid gap the closed door shows. Dial centre pins on that lower
+       line; svh matches the fixed overlay. */
+    --menu-seam: calc(46.0185svh + 4svh);
+    --menu-size: min(86vw, 76svh, 42rem);
+    --menu-joystick: calc(var(--menu-size) * 0.155);
+
+    position: fixed;
+    inset: 0;
+    /* Above the gate overlay the dial is stacked on. */
+    z-index: 60;
+    background: color-mix(in srgb, var(--color-background) 55%, transparent);
+    /* GSAP owns visibility from here; without it the menu never opens. */
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .gate-menu[data-open='false'] {
+    pointer-events: none;
+  }
+
+  /* Stage is dial-sized and centred on the seam; close hangs above it so the
+     X never shifts the dial off the gap. */
+  .gate-menu-stage {
+    position: absolute;
+    left: 50%;
+    top: var(--menu-seam);
+    width: var(--menu-size);
+    height: var(--menu-size);
+    transform: translate(-50%, -50%);
+  }
+
+  .gate-menu-close-slot {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    margin-bottom: 2.2svh;
+    transform: translateX(-50%);
+  }
+
+  .gate-menu-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 4.4svh;
+    width: 4.4svh;
+    border-radius: 0.7svh;
+    box-shadow: 0 0.6svh 2.8svh rgb(0 0 0 / 0.35);
+  }
+
+  .gate-menu-close:focus-visible {
+    outline: 0.2svh solid var(--color-accent);
+    outline-offset: 0.3svh;
+  }
+
+  .gate-menu-x {
+    height: 1.7svh;
+    width: 1.7svh;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+  }
+
+  .gate-menu-dial {
+    position: relative;
+    height: 100%;
+    width: 100%;
+  }
+
+  .gate-menu-svg {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .gate-menu-segment {
+    cursor: pointer;
+  }
+
+  /* Lengths from here down are viewBox units, not pixels: the dial scales as a
+     whole with --menu-size. */
+  .gate-menu-shape {
+    fill: color-mix(in srgb, var(--color-background) 72%, transparent);
+    stroke: color-mix(in srgb, var(--color-foreground) 18%, transparent);
+    stroke-width: 0.12;
+  }
+
+  .gate-menu-label,
+  .gate-menu-index {
+    fill: var(--color-foreground);
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+
+  .gate-menu-label {
+    font-family: var(--font-display);
+    font-size: 3.1px;
+  }
+
+  .gate-menu-index {
+    font-family: var(--font-mono);
+    font-size: 1.9px;
+    opacity: 0.55;
+  }
+
+  .gate-menu-segment:focus-visible {
+    outline: none;
+  }
+
+  .gate-menu-segment:focus-visible .gate-menu-shape {
+    stroke: var(--color-accent);
+    stroke-width: 0.6;
+  }
+
+  /* Pointer hover, keyboard focus and a joystick push are the same state: the
+     segment strikes on like a filament. */
+  .gate-menu-segment:hover .gate-menu-shape,
+  .gate-menu-segment:focus-visible .gate-menu-shape,
+  .gate-menu-segment[data-pushed='true'] .gate-menu-shape {
+    animation: gate-menu-strike 350ms ease-in-out forwards;
+  }
+
+  .gate-menu-segment:hover .gate-menu-label,
+  .gate-menu-segment:hover .gate-menu-index,
+  .gate-menu-segment:focus-visible .gate-menu-label,
+  .gate-menu-segment:focus-visible .gate-menu-index,
+  .gate-menu-segment[data-pushed='true'] .gate-menu-label,
+  .gate-menu-segment[data-pushed='true'] .gate-menu-index {
+    animation: gate-menu-strike-text 350ms ease-in-out forwards;
+  }
+
+  @keyframes gate-menu-strike {
+    0%,
+    24%,
+    48%,
+    72% {
+      fill: color-mix(in srgb, var(--color-background) 72%, transparent);
+    }
+    12%,
+    36%,
+    60%,
+    84% {
+      fill: color-mix(in srgb, var(--color-foreground) 85%, transparent);
+    }
+    100% {
+      fill: var(--color-foreground);
+    }
+  }
+
+  @keyframes gate-menu-strike-text {
+    0%,
+    24%,
+    48%,
+    72% {
+      fill: var(--color-foreground);
+    }
+    12%,
+    36%,
+    60%,
+    100% {
+      fill: var(--color-background);
+    }
+  }
+
+  /* The joystick is centred by its own slot so GSAP can own its transform. */
+  .gate-menu-joystick-slot {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+
+  .gate-menu-joystick {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: var(--menu-joystick);
+    width: var(--menu-joystick);
+    border-radius: 50%;
+    background: var(--color-glass);
+    box-shadow: 0 0.8svh 3svh rgb(0 0 0 / 0.45);
+    color: var(--color-foreground);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .gate-menu-joystick:active {
+    cursor: grabbing;
+  }
+
+  .gate-menu-joystick-icon {
+    height: calc(var(--menu-joystick) * 0.27);
+    width: auto;
+  }
+
+  .gate-menu-hint {
+    position: absolute;
+    height: calc(var(--menu-joystick) * 0.075);
+    width: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    opacity: 0.7;
+  }
+
+  .gate-menu-hint--up {
+    top: 11%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .gate-menu-hint--down {
+    bottom: 11%;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+  }
+
+  .gate-menu-hint--left {
+    left: 7%;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+
+  .gate-menu-hint--right {
+    right: 7%;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+  }
+
+  /* A phone-sized dial shrinks the type past reading size, so the labels take
+     a larger share of it. */
+  @media (max-width: 40rem) {
+    .gate-menu {
+      --menu-size: min(92vw, 62svh);
+    }
+
+    .gate-menu-label {
+      font-size: 3.7px;
+    }
+
+    .gate-menu-index {
+      font-size: 2.2px;
+    }
+  }
+
+  .see-more {
+    --see-more-font: 1.8519svh;
+    --see-more-track: 14.074svh;
+    --see-more-stroke: 2px;
+
+    position: absolute;
+    left: 6.38svw;
+    bottom: 8svh;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.34svh;
+    text-decoration: none;
+    /* GSAP reveals it a beat after the panes have parked. */
+    opacity: 0;
+  }
+
+  .see-more:focus-visible {
+    outline: 0.1852svh solid var(--color-accent);
+    outline-offset: 0.37svh;
+  }
+
+  .see-more-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.13svh;
+    height: 10.37svh;
+    font-family: var(--font-mono);
+    font-size: var(--see-more-font);
+    line-height: 1;
+    color: var(--color-foreground);
+    text-transform: uppercase;
+  }
+
+  .see-more-label > span {
+    white-space: nowrap;
+    transform: rotate(-90deg);
+  }
+
+  .see-more-track {
+    position: relative;
+    width: var(--see-more-stroke);
+    height: var(--see-more-track);
+    overflow: hidden;
+    border-radius: 999px;
+    background: linear-gradient(
+      to bottom,
+      var(--color-cue-track),
+      transparent
+    );
+  }
+
+  /* Comet: transparent → #999 at 35% → white at the round head. Travels down
+     the track; a hold at the end lets the dark line read between passes. */
+  .see-more-track::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    height: 40%;
+    border-radius: 0 0 999px 999px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-cue-pulse-tail) 35%,
+      var(--color-cue-pulse-head)
+    );
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .see-more-track::after {
+      animation: see-more-shoot 2.4s ease-in-out infinite;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .see-more-track::after {
+      top: 0;
+    }
+  }
+
+  @keyframes see-more-shoot {
+    0% {
+      transform: translateY(-100%);
+    }
+    70% {
+      transform: translateY(250%);
+    }
+    100% {
+      transform: translateY(250%);
+    }
+  }
+
   /* Without scripting the panes can never travel, so they are parked at their
      resting positions instead of covering the page. Reduced motion lands here
      too, so those users never see the gate paint over the content.
@@ -180,6 +664,38 @@
 
     .gate-logo {
       visibility: hidden;
+    }
+
+    /* Nothing will ever animate the navbar in, so it stays visible. */
+    .gate-nav,
+    .see-more {
+      opacity: 1;
+    }
+
+    /* The shader that normally draws the button edge never runs here. */
+    .gate-nav-button {
+      box-shadow:
+        inset 0 0 0 0.0926cqh rgb(255 255 255 / 0.22),
+        0 0.6cqh 2.8cqh rgb(33 33 33 / 0.22);
+    }
+
+    /* A lit segment is the point of the strike; the flicker getting there is
+       not, so it is skipped rather than replayed slowly. */
+    .gate-menu-segment:hover .gate-menu-shape,
+    .gate-menu-segment:focus-visible .gate-menu-shape,
+    .gate-menu-segment[data-pushed='true'] .gate-menu-shape {
+      animation: none;
+      fill: var(--color-foreground);
+    }
+
+    .gate-menu-segment:hover .gate-menu-label,
+    .gate-menu-segment:hover .gate-menu-index,
+    .gate-menu-segment:focus-visible .gate-menu-label,
+    .gate-menu-segment:focus-visible .gate-menu-index,
+    .gate-menu-segment[data-pushed='true'] .gate-menu-label,
+    .gate-menu-segment[data-pushed='true'] .gate-menu-index {
+      animation: none;
+      fill: var(--color-background);
     }
   }
 }

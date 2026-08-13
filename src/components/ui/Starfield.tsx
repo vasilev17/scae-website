@@ -1,10 +1,22 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
+
+/**
+ * Live warp controls, read once per frame so an animation engine can drive the
+ * field without re-rendering the island. `speed` multiplies the travel per
+ * frame; `zoom` widens the projection, which pushes stars outward from the
+ * centre the way flying into the field would.
+ */
+export type StarfieldWarp = {
+  speed: number;
+  zoom: number;
+};
 
 interface StarfieldProps {
   bgColor?: string;
   starColor?: string;
   speed?: number;
   quantity?: number;
+  warpRef?: RefObject<StarfieldWarp>;
 }
 
 type StarTuple = [
@@ -36,6 +48,7 @@ export function Starfield({
   starColor = 'rgba(255, 255, 255, 1)',
   speed = 0.5,
   quantity = 500,
+  warpRef,
 }: StarfieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -82,21 +95,25 @@ export function Starfield({
 
     const initStars = () => {
       if (sd.current.star.arr.length !== quantity) {
-        sd.current.star.arr = new Array(quantity).fill(null).map(() => [
-          Math.random() * sd.current.w * 2 - sd.current.x * 2,
-          Math.random() * sd.current.h * 2 - sd.current.y * 2,
-          Math.round(Math.random() * sd.current.z),
-          0,
-          0,
-          0,
-          0,
-          true,
-        ]);
+        sd.current.star.arr = new Array(quantity)
+          .fill(null)
+          .map(() => [
+            Math.random() * sd.current.w * 2 - sd.current.x * 2,
+            Math.random() * sd.current.h * 2 - sd.current.y * 2,
+            Math.round(Math.random() * sd.current.z),
+            0,
+            0,
+            0,
+            0,
+            true,
+          ]);
       }
     };
 
     const update = () => {
-      const ratio = quantity / 2;
+      const warp = warpRef?.current;
+      const ratio = (quantity / 2) * (warp?.zoom ?? 1);
+      const travel = speed * (warp?.speed ?? 1);
 
       sd.current.star.arr = sd.current.star.arr.map((star) => {
         const newStar = [...star] as StarTuple;
@@ -105,7 +122,7 @@ export function Starfield({
         newStar[5] = newStar[3];
         newStar[6] = newStar[4];
 
-        newStar[2] -= speed;
+        newStar[2] -= travel;
 
         if (newStar[2] > sd.current.z) {
           newStar[2] -= sd.current.z;
@@ -178,7 +195,7 @@ export function Starfield({
       const scaleY = sd.current.h / oldH;
       const scaleZ = sd.current.z / oldZ;
 
-      const ratio = quantity / 2;
+      const ratio = (quantity / 2) * (warpRef?.current.zoom ?? 1);
       sd.current.star.arr.forEach((star) => {
         star[0] *= scaleX;
         star[1] *= scaleY;
@@ -201,7 +218,7 @@ export function Starfield({
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [bgColor, starColor, speed, quantity]);
+  }, [bgColor, starColor, speed, quantity, warpRef]);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

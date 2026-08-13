@@ -8,9 +8,28 @@ export const bg: UiDictionary = {
   nav: {
     switchLanguage: 'Смени езика',
     home: 'Начало',
+    label: 'Основна',
+    brand: 'Студентски клуб по аерокосмическо инженерство (SCAE) България',
+    contact: 'Контакти',
+    menu: 'Меню',
+  },
+  menu: {
+    label: 'Навигация',
+    close: 'Затвори менюто',
+    items: {
+      about: 'За нас',
+      projects: 'Проекти',
+      team: 'Екип',
+      events: 'Събития',
+      join: 'Стани част',
+      contact: 'Контакти',
+    },
   },
   home: {
     title: 'Готово за разработка',
     heading: 'Готово',
+    tagline: 'Небето е само началото.',
+    seeMore: 'Виж още',
+    outro: 'Готови за старт.',
   },
 };

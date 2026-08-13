@@ -1,0 +1,353 @@
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
+
+import {
+  CircularMenu,
+  type CircularMenuItem,
+} from '@/components/ui/CircularMenu';
+import { GateFrame } from '@/components/ui/GateFrame';
+import { GateNav } from '@/components/ui/GateNav';
+import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
+import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
+import {
+  GATE_CRACK_TRAVEL,
+  GATE_INTERIOR_DELAY,
+  GATE_PHASES,
+  gateFlybyOrigin,
+  perGatePane,
+  readGateGeometry,
+} from '@/lib/gate';
+
+gsap.registerPlugin(useGSAP, ScrollTrigger);
+
+type LandingHeroProps = {
+  metalSrc: string;
+  logoSrc: string;
+  contactIconSrc: string;
+  menuIconSrc: string;
+  // Accessible name for the hero region.
+  label: string;
+  tagline: string;
+  seeMore: string;
+  nav: {
+    label: string;
+    brand: string;
+    contact: string;
+    menu: string;
+  };
+  menu: {
+    label: string;
+    close: string;
+    items: CircularMenuItem[];
+  };
+  // Length of the gate's opening animation (in seconds).
+  introDuration?: number;
+};
+
+/**
+ * How much the pane pair grows while the camera pushes through the gap.
+ * Sized so the inner edges just clear the viewport at the end of the pin,
+ * instead of overshooting and vanishing mid-scroll.
+ */
+const FLYBY_SCALE = 2.4;
+
+// Warp at the deepest point of the push, then the cruise it eases to.
+const WARP = { speed: 8, zoom: 2.2 } as const;
+const CRUISE_SPEED = 2;
+
+// Scroll distance the pinned hero consumes.
+const SCROLL_LENGTH = '+=200%';
+
+// How long the gate takes to shut behind the menu, and to reopen after it.
+const DOOR_DURATION = 0.9;
+// Head start the dial's flicker-out gets before the gate reopens.
+const MENU_EXIT = 0.45;
+
+export function LandingHero({
+  metalSrc,
+  logoSrc,
+  contactIconSrc,
+  menuIconSrc,
+  label,
+  tagline,
+  seeMore,
+  nav,
+  menu,
+  introDuration = 2.6,
+}: LandingHeroProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const gateRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const warpRef = useRef<StarfieldWarp>({ speed: 1, zoom: 1 });
+  const [introDone, setIntroDone] = useState(false);
+  // Two flags rather than one: the gate leads the dial in and trails it out,
+  // and while they disagree a transition is still running.
+  const [gateShut, setGateShut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  /**
+   * Scrolling during the opening would desync the gate from the scroll
+   * choreography that takes over from it, so the page is held until the panes
+   * have settled. The shut gate holds it for as long as the menu is up.
+   * Readers who opted out of motion are never locked out by the intro.
+   */
+  useEffect(() => {
+    const holdForIntro =
+      !introDone &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!holdForIntro && !gateShut) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    if (holdForIntro) window.scrollTo(0, 0);
+
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [introDone, gateShut]);
+
+  const { contextSafe } = useGSAP(
+    () => {
+      const root = rootRef.current;
+      const gate = gateRef.current;
+      const hero = heroRef.current;
+      if (!root || !gate || !hero) return;
+
+      const geometry = readGateGeometry(gate);
+      // Scoped explicitly: matchMedia opens its own context, which would not
+      // inherit the scope useGSAP applies to this function.
+      const media = gsap.matchMedia(root);
+
+      media.add(
+        {
+          reduce: '(prefers-reduced-motion: reduce)',
+          animate: '(prefers-reduced-motion: no-preference)',
+        },
+        (context) => {
+          if (context.conditions?.reduce) {
+            gsap.set('.gate-pane-group', {
+              yPercent: perGatePane(geometry.restTop, geometry.restBottom),
+              willChange: 'auto',
+            });
+            gsap.set('.gate-logo', { autoAlpha: 0 });
+            gsap.set('.gate-nav', { autoAlpha: 1 });
+            gsap.set('.see-more', { autoAlpha: 1 });
+            return;
+          }
+
+          gsap.set('.landing-copy', { yPercent: 60, autoAlpha: 0 });
+          gsap.set('.see-more', { autoAlpha: 0 });
+
+          // Built first so the intro can hand over to it, but held inert until
+          // then: a live pin would fight the opening animation.
+          const flyby = gsap.timeline({
+            scrollTrigger: {
+              trigger: hero,
+              start: 'top top',
+              end: SCROLL_LENGTH,
+              pin: true,
+              pinSpacing: true,
+              scrub: 1,
+              onToggle: (self) =>
+                gsap.set('.gate-pane-group', {
+                  willChange: self.isActive ? 'transform' : 'auto',
+                }),
+            },
+          });
+          flyby.scrollTrigger?.disable();
+
+          gsap.set('.gate-pane-group', {
+            transformOrigin: gateFlybyOrigin(geometry),
+          });
+
+          flyby
+            .to(
+              '.gate-pane-group',
+              { scale: FLYBY_SCALE, ease: 'none', duration: 0.7 },
+              0,
+            )
+            .to(
+              warpRef.current,
+              { ...WARP, ease: 'power2.in', duration: 0.6 },
+              0,
+            )
+            .to(
+              warpRef.current,
+              { speed: CRUISE_SPEED, ease: 'power2.out', duration: 0.28 },
+              0.7,
+            )
+            .to(
+              '.landing-copy',
+              { yPercent: 0, autoAlpha: 1, ease: 'power2.out', duration: 0.28 },
+              0.7,
+            );
+
+          gsap
+            .timeline({
+              onComplete: () => {
+                setIntroDone(true);
+                flyby.scrollTrigger?.enable();
+                ScrollTrigger.refresh();
+              },
+            })
+            .to(
+              '.gate-pane-group',
+              {
+                yPercent: perGatePane(-GATE_CRACK_TRAVEL, GATE_CRACK_TRAVEL),
+                duration: introDuration * GATE_PHASES.crackDuration,
+                ease: 'power4.out',
+              },
+              introDuration * GATE_PHASES.crackStart,
+            )
+            .to(
+              '.gate-pane-group',
+              {
+                yPercent: perGatePane(geometry.openTop, geometry.openBottom),
+                duration: introDuration * GATE_PHASES.openDuration,
+                ease: 'power1.inOut',
+              },
+              introDuration * GATE_PHASES.openStart,
+            )
+            // Both swaps happen while the panes are off screen: the split logo
+            // goes, the navbar the top pane carries arrives.
+            .set(
+              '.gate-logo',
+              { autoAlpha: 0 },
+              introDuration *
+                (GATE_PHASES.openStart + GATE_PHASES.openDuration),
+            )
+            .set(
+              '.gate-nav',
+              { autoAlpha: 1 },
+              introDuration *
+                (GATE_PHASES.openStart + GATE_PHASES.openDuration),
+            )
+            .to(
+              '.gate-pane-group',
+              {
+                yPercent: perGatePane(geometry.restTop, geometry.restBottom),
+                duration: introDuration * GATE_PHASES.settleDuration,
+                ease: 'power2.out',
+              },
+              introDuration * GATE_PHASES.settleStart,
+            )
+            // Interior cues sit in the gap, so they wait until the panes have
+            // parked — plus a beat — instead of flashing in while the door is
+            // still off-screen.
+            .to(
+              '.see-more',
+              { autoAlpha: 1, duration: 0.4, ease: 'power2.out' },
+              introDuration *
+                (GATE_PHASES.settleStart + GATE_PHASES.settleDuration) +
+                GATE_INTERIOR_DELAY,
+            );
+        },
+      );
+
+      return () => media.revert();
+    },
+    { scope: rootRef },
+  );
+
+  /**
+   * Shuts the gate on the way in and reopens it on the way out, with the dial
+   * held to the stretch where the panes are still. Ignored mid-transition.
+   */
+  const runToggle = () => {
+    const gate = gateRef.current;
+    if (!gate || gateShut !== menuOpen) return;
+
+    const geometry = readGateGeometry(gate);
+    const reduce = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    const duration = reduce ? 0 : DOOR_DURATION;
+
+    if (!menuOpen) {
+      setGateShut(true);
+      gsap
+        .timeline({ onComplete: () => setMenuOpen(true) })
+        // Closed is where the panes started, so the pair simply travels home —
+        // any flyby scaling is undone with it.
+        .to(
+          '.gate-pane-group',
+          { yPercent: 0, scale: 1, duration, ease: 'power2.inOut' },
+          0,
+        )
+        .to('.gate-nav', { autoAlpha: 0, duration: duration * 0.3 }, 0);
+      return;
+    }
+
+    setMenuOpen(false);
+    gsap
+      .timeline({
+        onComplete: () => {
+          setGateShut(false);
+          menuButtonRef.current?.focus();
+        },
+      })
+      .to(
+        '.gate-pane-group',
+        {
+          yPercent: perGatePane(geometry.restTop, geometry.restBottom),
+          duration,
+          ease: 'power2.inOut',
+        },
+        reduce ? 0 : MENU_EXIT,
+      )
+      .to('.gate-nav', { autoAlpha: 1, duration: duration * 0.3 }, '>-0.35');
+  };
+
+  // Wrapped at click time rather than during render: the wrapper reads refs,
+  // and the scoping and cleanup it adds are the same either way.
+  const toggleMenu = () => contextSafe(runToggle)();
+
+  return (
+    <div ref={rootRef}>
+      <section
+        ref={heroRef}
+        className="relative h-dvh w-full overflow-hidden bg-black"
+        aria-label={label}
+      >
+        <Starfield
+          bgColor="rgba(0, 0, 0, 1)"
+          starColor="rgba(255, 255, 255, 1)"
+          speed={0.75}
+          quantity={400}
+          warpRef={warpRef}
+        />
+        <div className="landing-copy pointer-events-none absolute inset-0 flex items-center justify-center px-6">
+          <h1 className="max-w-3xl text-center text-3xl leading-tight font-semibold text-balance sm:text-5xl">
+            {tagline}
+          </h1>
+        </div>
+        <SeeMoreCue label={seeMore} href="#after-hero" />
+      </section>
+      <GateFrame ref={gateRef} metalSrc={metalSrc} logoSrc={logoSrc}>
+        <GateNav
+          logoSrc={logoSrc}
+          contactIconSrc={contactIconSrc}
+          menuIconSrc={menuIconSrc}
+          label={nav.label}
+          brand={nav.brand}
+          contactLabel={nav.contact}
+          menuLabel={nav.menu}
+          menuOpen={menuOpen}
+          onMenuToggle={toggleMenu}
+          menuButtonRef={menuButtonRef}
+        />
+      </GateFrame>
+      <CircularMenu
+        open={menuOpen}
+        items={menu.items}
+        label={menu.label}
+        closeLabel={menu.close}
+        onClose={toggleMenu}
+        centerIconSrc={menuIconSrc}
+      />
+    </div>
+  );
+}
