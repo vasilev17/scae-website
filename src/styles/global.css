@@ -37,6 +37,11 @@
   --color-cue-pulse-tail: #999999;
   --color-cue-pulse-head: #ffffff;
 
+  /* Coming-soon chrome sheen, reused on the hero headline. */
+  --color-title-sheen-mid: #8f8d8d;
+  --color-title-sheen-bottom: #666666;
+  --color-subtitle: #cccccc;
+
   --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Plateia', var(--font-sans);
   --font-mono: 'Disket Mono', ui-monospace, monospace;
@@ -548,6 +553,31 @@
     }
   }
 
+  /* Lives between the pane groups: above the bottom metal, under the top bar.
+     GSAP owns translateY. A CSS transform here would snap back after the
+     tween clears the inline style. */
+  /* Title + SEE MORE share one transform origin: the viewport centre, same
+     vanishing point as the gate flyby. */
+  .hero-interior {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    transform-origin: 50% 50%;
+  }
+
+  .hero-rocket {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .hero-rocket > * {
+    height: 100%;
+    width: 100%;
+  }
+
   .see-more {
     --see-more-font: 1.8519svh;
     --see-more-track: 14.074svh;
@@ -562,6 +592,7 @@
     align-items: center;
     gap: 1.34svh;
     text-decoration: none;
+    pointer-events: auto;
     /* GSAP reveals it a beat after the panes have parked. */
     opacity: 0;
   }
@@ -595,11 +626,7 @@
     height: var(--see-more-track);
     overflow: hidden;
     border-radius: 999px;
-    background: linear-gradient(
-      to bottom,
-      var(--color-cue-track),
-      transparent
-    );
+    background: linear-gradient(to bottom, var(--color-cue-track), transparent);
   }
 
   /* Comet: transparent → #999 at 35% → white at the round head. Travels down
@@ -642,6 +669,61 @@
     }
   }
 
+  .landing-copy {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3.15svh;
+    padding-top: 24.44svh;
+    padding-inline: 6svw;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .landing-title {
+    max-width: 66.04svw;
+    font-family: var(--font-display);
+    font-size: clamp(0.875rem, 2.778svh, 1.875rem);
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* Clip on an inline span with clone: a block-level clip paints one gradient
+     down the whole box, so only the first line sits in the white stop. */
+  .landing-title > span {
+    color: transparent;
+    background-image: linear-gradient(
+      to bottom,
+      var(--color-flag-white) 60%,
+      var(--color-title-sheen-mid) 80%,
+      var(--color-title-sheen-bottom)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .landing-subtitle {
+    max-width: 90%;
+    font-family: var(--font-display);
+    font-size: clamp(0.725rem, 2.222svh, 1.5rem);
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--color-subtitle);
+  }
+
+  @media (min-width: 64rem) {
+    .landing-subtitle {
+      max-width: 29.01svw;
+    }
+  }
+
   /* Without scripting the panes can never travel, so they are parked at their
      resting positions instead of covering the page. Reduced motion lands here
      too, so those users never see the gate paint over the content.
@@ -668,7 +750,8 @@
 
     /* Nothing will ever animate the navbar in, so it stays visible. */
     .gate-nav,
-    .see-more {
+    .see-more,
+    .landing-copy {
       opacity: 1;
     }
 

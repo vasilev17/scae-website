@@ -31,5 +31,20 @@ export default defineConfig({
         '@': path.resolve(rootDir, './src'),
       },
     },
+    // Three.js addons sit outside the main entry, so Vite keeps rediscovering
+    // them and 504s the late rocket import as "Outdated Optimize Dep".
+    optimizeDeps: {
+      include: [
+        'three',
+        '@react-three/fiber',
+        'three/examples/jsm/loaders/GLTFLoader.js',
+        'three/examples/jsm/libs/meshopt_decoder.module.js',
+      ],
+    },
+    server: {
+      warmup: {
+        clientFiles: ['./src/components/ui/RocketScene.tsx'],
+      },
+    },
   },
 });

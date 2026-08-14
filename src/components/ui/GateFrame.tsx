@@ -7,6 +7,8 @@ type GateFrameProps = {
   logoSrc: string;
   // Content carried by the top pane, e.g. the navbar.
   children?: ReactNode;
+  // Sits between the panes: above the bottom metal, under the top bar.
+  stage?: ReactNode;
 };
 
 /**
@@ -19,6 +21,7 @@ export function GateFrame({
   metalSrc,
   logoSrc,
   children,
+  stage,
 }: GateFrameProps) {
   return (
     <div
@@ -35,6 +38,7 @@ export function GateFrame({
         </div>
         <img src={logoSrc} alt="" className="gate-logo gate-logo--bottom" />
       </div>
+      {stage}
       <div className="gate-pane-group gate-pane-group--top">
         <div className="gate-pane-shadow" aria-hidden="true">
           <div className="gate-pane gate-pane--top"></div>

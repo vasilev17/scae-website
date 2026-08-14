@@ -26,7 +26,9 @@ export const en = {
   home: {
     title: 'Ready for Dev',
     heading: 'Ready for Dev',
-    tagline: 'The sky is where we start.',
+    headline:
+      'A Bulgarian student-led initiative that brings applied engineering into our education',
+    subtitle: "by launching the nation's first modern high-powered rockets.",
     seeMore: 'See more',
     outro: 'Ready for launch.',
   },

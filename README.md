@@ -21,11 +21,12 @@ pnpm dev
 
 ## Scripts
 
-| Command        | Description                 |
-| -------------- | --------------------------- |
-| `pnpm dev`     | Start dev server            |
-| `pnpm build`   | Production build to `dist/` |
-| `pnpm preview` | Preview production build    |
-| `pnpm check`   | Astro + TypeScript checks   |
-| `pnpm lint`    | ESLint                      |
-| `pnpm format`  | Prettier write              |
+| Command             | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| `pnpm dev`          | Start dev server                                  |
+| `pnpm build`        | Production build to `dist/`                       |
+| `pnpm preview`      | Preview production build                          |
+| `pnpm check`        | Astro + TypeScript checks                         |
+| `pnpm lint`         | ESLint                                            |
+| `pnpm format`       | Prettier write                                    |
+| `pnpm build:rocket` | Re-bake the hero rocket model from the CAD export |

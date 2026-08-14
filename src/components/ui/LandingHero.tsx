@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/CircularMenu';
 import { GateFrame } from '@/components/ui/GateFrame';
 import { GateNav } from '@/components/ui/GateNav';
+import { HeroRocket } from '@/components/ui/HeroRocket';
 import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
 import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
 import {
@@ -29,7 +30,8 @@ type LandingHeroProps = {
   menuIconSrc: string;
   // Accessible name for the hero region.
   label: string;
-  tagline: string;
+  headline: string;
+  subtitle: string;
   seeMore: string;
   nav: {
     label: string;
@@ -53,12 +55,20 @@ type LandingHeroProps = {
  */
 const FLYBY_SCALE = 2.4;
 
+// Interior copy sits closer than the frame, so it blows past sooner and harder.
+const INTERIOR_SCALE = 6;
+
 // Warp at the deepest point of the push, then the cruise it eases to.
 const WARP = { speed: 8, zoom: 2.2 } as const;
 const CRUISE_SPEED = 2;
 
 // Scroll distance the pinned hero consumes.
 const SCROLL_LENGTH = '+=200%';
+
+// Full viewport drop: panes travel off-screen during the open, so parking
+// behind the bottom pane is not enough. The GLB still loads in that hole.
+const ROCKET_ENTRY = 100;
+const ROCKET_ENTRY_DURATION = 1.4;
 
 // How long the gate takes to shut behind the menu, and to reopen after it.
 const DOOR_DURATION = 0.9;
@@ -71,7 +81,8 @@ export function LandingHero({
   contactIconSrc,
   menuIconSrc,
   label,
-  tagline,
+  headline,
+  subtitle,
   seeMore,
   nav,
   menu,
@@ -135,11 +146,14 @@ export function LandingHero({
             gsap.set('.gate-logo', { autoAlpha: 0 });
             gsap.set('.gate-nav', { autoAlpha: 1 });
             gsap.set('.see-more', { autoAlpha: 1 });
+            gsap.set('.landing-copy', { autoAlpha: 1 });
+            gsap.set('.hero-rocket', { yPercent: 0 });
             return;
           }
 
-          gsap.set('.landing-copy', { yPercent: 60, autoAlpha: 0 });
+          gsap.set('.landing-copy', { autoAlpha: 0 });
           gsap.set('.see-more', { autoAlpha: 0 });
+          gsap.set('.hero-rocket', { yPercent: ROCKET_ENTRY });
 
           // Built first so the intro can hand over to it, but held inert until
           // then: a live pin would fight the opening animation.
@@ -152,7 +166,7 @@ export function LandingHero({
               pinSpacing: true,
               scrub: 1,
               onToggle: (self) =>
-                gsap.set('.gate-pane-group', {
+                gsap.set('.gate-pane-group, .hero-interior', {
                   willChange: self.isActive ? 'transform' : 'auto',
                 }),
             },
@@ -170,6 +184,16 @@ export function LandingHero({
               0,
             )
             .to(
+              '.hero-interior',
+              { scale: INTERIOR_SCALE, ease: 'none', duration: 0.5 },
+              0,
+            )
+            .to(
+              '.hero-interior',
+              { autoAlpha: 0, ease: 'none', duration: 0.12 },
+              0.38,
+            )
+            .to(
               warpRef.current,
               { ...WARP, ease: 'power2.in', duration: 0.6 },
               0,
@@ -178,12 +202,14 @@ export function LandingHero({
               warpRef.current,
               { speed: CRUISE_SPEED, ease: 'power2.out', duration: 0.28 },
               0.7,
-            )
-            .to(
-              '.landing-copy',
-              { yPercent: 0, autoAlpha: 1, ease: 'power2.out', duration: 0.28 },
-              0.7,
             );
+
+          // When the panes have parked, plus a beat. Everything the gate was
+          // hiding arrives together from here.
+          const interiorAt =
+            introDuration *
+              (GATE_PHASES.settleStart + GATE_PHASES.settleDuration) +
+            GATE_INTERIOR_DELAY;
 
           gsap
             .timeline({
@@ -238,11 +264,20 @@ export function LandingHero({
             // parked — plus a beat — instead of flashing in while the door is
             // still off-screen.
             .to(
-              '.see-more',
+              '.see-more, .landing-copy',
               { autoAlpha: 1, duration: 0.4, ease: 'power2.out' },
-              introDuration *
-                (GATE_PHASES.settleStart + GATE_PHASES.settleDuration) +
-                GATE_INTERIOR_DELAY,
+              interiorAt,
+            )
+            // The rocket rises out from behind the bottom pane rather than
+            // fading in, so the pane reads as something it is standing behind.
+            .to(
+              '.hero-rocket',
+              {
+                yPercent: 0,
+                duration: ROCKET_ENTRY_DURATION,
+                ease: 'power2.out',
+              },
+              interiorAt,
             );
         },
       );
@@ -319,14 +354,26 @@ export function LandingHero({
           quantity={400}
           warpRef={warpRef}
         />
-        <div className="landing-copy pointer-events-none absolute inset-0 flex items-center justify-center px-6">
-          <h1 className="max-w-3xl text-center text-3xl leading-tight font-semibold text-balance sm:text-5xl">
-            {tagline}
-          </h1>
+        <div className="hero-interior">
+          <div className="landing-copy">
+            <h1 className="landing-title">
+              <span>{headline}</span>
+            </h1>
+            <p className="landing-subtitle">{subtitle}</p>
+          </div>
+          <SeeMoreCue label={seeMore} href="#after-hero" />
         </div>
-        <SeeMoreCue label={seeMore} href="#after-hero" />
       </section>
-      <GateFrame ref={gateRef} metalSrc={metalSrc} logoSrc={logoSrc}>
+      <GateFrame
+        ref={gateRef}
+        metalSrc={metalSrc}
+        logoSrc={logoSrc}
+        stage={
+          <div className="hero-rocket" aria-hidden="true">
+            <HeroRocket />
+          </div>
+        }
+      >
         <GateNav
           logoSrc={logoSrc}
           contactIconSrc={contactIconSrc}

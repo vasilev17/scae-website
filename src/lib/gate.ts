@@ -20,7 +20,7 @@ export const GATE_PHASES = {
 } as const;
 
 // Pause after the panes have parked, before interior cues (SEE MORE) fade in.
-export const GATE_INTERIOR_DELAY = 1;
+export const GATE_INTERIOR_DELAY = 0.5;
 
 // How far the first fast crack travels, as a percentage of viewport height.
 export const GATE_CRACK_TRAVEL = 8;
