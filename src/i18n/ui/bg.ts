@@ -33,5 +33,6 @@ export const bg: UiDictionary = {
     subtitle: 'като изстрелваме първите модерни високомощни ракети в страната.',
     seeMore: 'Виж още',
     outro: 'Готови за старт.',
+    commodore: 'Commodore',
   },
 };

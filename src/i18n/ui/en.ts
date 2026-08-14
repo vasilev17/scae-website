@@ -31,6 +31,7 @@ export const en = {
     subtitle: "by launching the nation's first modern high-powered rockets.",
     seeMore: 'See more',
     outro: 'Ready for launch.',
+    commodore: 'Commodore',
   },
 };
 

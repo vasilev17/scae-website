@@ -3,12 +3,14 @@
  *
  * Onshape writes one primitive per CAD face, which lands at ~385 draw calls,
  * keeps every node transform live, and stands the rocket along +Z with the
- * origin somewhere inside the airframe. This bakes all of that down: parts are
- * merged per material, the mesh is re-oriented nose-up along +Y, centred on its
- * own axis with the tail at y = 0, and the buffers are Meshopt-compressed.
+ * origin somewhere inside the airframe. This bakes all of that down: faces
+ * are merged per part, the mesh is re-oriented nose-up along +Y, centred on
+ * its own axis with the tail at y = 0, and the buffers are Meshopt-compressed.
  *
- * The component that renders it can then treat the model as a unit-placed prop
- * instead of carrying correction transforms.
+ * KEEP_NAMED_PARTS (default true) leaves the 9 CAD parts as separate nodes
+ * so the hero can explode them. Set false and rebuild to restore the old
+ * one-blob, join-by-material model. The previous blob is also kept as
+ * src/assets/generated/rocket-joined.glb.
  *
  * Run: node scripts/build-rocket-model.mjs
  */
@@ -40,6 +42,25 @@ const SOURCE = path.join(
 const OUT_DIR = path.join(root, 'src/assets/generated');
 const OUT_FILE = path.join(OUT_DIR, 'rocket.glb');
 
+// false = old join-by-material blob. true = 9 independently movable parts.
+const KEEP_NAMED_PARTS = true;
+
+/**
+ * Onshape part names → stable ids the scene looks up. Match is on the node
+ * name, or a parent "occurrence of …" name that still contains the CAD string.
+ */
+const PART_IDS = {
+  'перо 1 ново': 'fin-neg-x',
+  'перо 2 ново': 'fin-pos-z',
+  'перо 3 ново': 'fin-pos-x',
+  'перо 4 ново': 'fin-neg-z',
+  дъно: 'tail',
+  фузелаж: 'fuselage',
+  кейс: 'case',
+  електроника_държач: 'bay',
+  'Part 1': 'nose',
+};
+
 /**
  * Column-major transform taking the CAD frame (nose along +Z, arbitrary origin)
  * to ours (nose along +Y, tail at the origin, centred on the other two axes).
@@ -59,6 +80,26 @@ function orientation(bounds) {
   ];
 }
 
+function partIdFor(name) {
+  if (name in PART_IDS) return PART_IDS[name];
+  for (const [cad, id] of Object.entries(PART_IDS)) {
+    if (name.includes(cad)) return id;
+  }
+  return null;
+}
+
+function renameParts(document) {
+  for (const node of document.getRoot().listNodes()) {
+    if (!node.getMesh()) continue;
+    const id = partIdFor(node.getName());
+    if (!id) {
+      throw new Error(`Unmapped rocket part node: ${JSON.stringify(node.getName())}`);
+    }
+    node.setName(id);
+    node.getMesh()?.setName(id);
+  }
+}
+
 async function main() {
   await MeshoptEncoder.ready;
 
@@ -68,11 +109,17 @@ async function main() {
   const document = await io.read(SOURCE);
   const scene = document.getRoot().getDefaultScene();
 
-  // Hoisting then baking every node transform is what lets `join` merge parts
-  // that only differ by placement.
   await document.transform(flatten());
   for (const node of document.getRoot().listNodes()) clearNodeTransform(node);
-  await document.transform(dedup(), join(), weld(), prune(), unpartition());
+  await document.transform(
+    dedup(),
+    KEEP_NAMED_PARTS ? join({ keepMeshes: true }) : join(),
+    weld(),
+    prune(),
+    unpartition(),
+  );
+
+  if (KEEP_NAMED_PARTS) renameParts(document);
 
   const matrix = orientation(getBounds(scene));
   for (const mesh of document.getRoot().listMeshes()) {
@@ -96,8 +143,14 @@ async function main() {
     .reduce((total, mesh) => total + mesh.listPrimitives().length, 0);
   const bounds = getBounds(scene);
   const { size } = await stat(OUT_FILE);
+  const names = document
+    .getRoot()
+    .listNodes()
+    .filter((node) => node.getMesh())
+    .map((node) => node.getName());
   console.log(`rocket.glb: ${(size / 1024).toFixed(1)} KB`);
   console.log(`primitives: ${primitives}`);
+  console.log(`parts: ${names.join(', ')}`);
   console.log(`bounds: ${JSON.stringify(bounds)}`);
 }
 

@@ -1,6 +1,20 @@
-import { Suspense, useEffect, useState, type ComponentType } from 'react';
+import {
+  Suspense,
+  useEffect,
+  useState,
+  type ComponentType,
+  type RefObject,
+} from 'react';
+
+import { type RocketPose } from '@/lib/rocket';
 
 const RETRY_MS = 400;
+
+type HeroRocketProps = {
+  poseRef: RefObject<RocketPose>;
+};
+
+type RocketSceneComponent = ComponentType<{ poseRef: RefObject<RocketPose> }>;
 
 /**
  * The hero island is `client:load`, so three.js must not enter its SSR tree.
@@ -10,8 +24,8 @@ const RETRY_MS = 400;
  * Vite can 504 the first fetch while it rebundles three.js. One retry covers
  * that window; a real load error still lands in the console.
  */
-export function HeroRocket() {
-  const [Scene, setScene] = useState<ComponentType | null>(null);
+export function HeroRocket({ poseRef }: HeroRocketProps) {
+  const [Scene, setScene] = useState<RocketSceneComponent | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +58,7 @@ export function HeroRocket() {
 
   return (
     <Suspense fallback={null}>
-      <Scene />
+      <Scene poseRef={poseRef} />
     </Suspense>
   );
 }

@@ -3,13 +3,12 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useEffect, useRef, useState } from 'react';
 
-import {
-  CircularMenu,
-  type CircularMenuItem,
-} from '@/components/ui/CircularMenu';
+import { CircularMenu, type CircularMenuItem } from '@/components/ui/CircularMenu';
+import { DissolveOverlay } from '@/components/ui/DissolveOverlay';
 import { GateFrame } from '@/components/ui/GateFrame';
 import { GateNav } from '@/components/ui/GateNav';
 import { HeroRocket } from '@/components/ui/HeroRocket';
+import { RocketExhibit } from '@/components/ui/RocketExhibit';
 import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
 import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
 import {
@@ -20,6 +19,9 @@ import {
   perGatePane,
   readGateGeometry,
 } from '@/lib/gate';
+import { REST_ROCKET_POSE, ROCKET_FLY_SPIN, ROCKET_FLY_TILT, type RocketPose } from '@/lib/rocket';
+import { ROCKET_DISASSEMBLE } from '@/lib/rocket-disassemble';
+import { REST_PORTAL, ROCKET_PORTAL } from '@/lib/rocket-portal';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -33,6 +35,7 @@ type LandingHeroProps = {
   headline: string;
   subtitle: string;
   seeMore: string;
+  exhibitName: string;
   nav: {
     label: string;
     brand: string;
@@ -55,15 +58,16 @@ type LandingHeroProps = {
  */
 const FLYBY_SCALE = 2.4;
 
-// Interior copy sits closer than the frame, so it blows past sooner and harder.
-const INTERIOR_SCALE = 6;
+// Copy sits behind the frame. Same scroll clock, smaller scale, so it lags
+// the panes instead of blowing past them.
+const INTERIOR_SCALE = 1.75;
 
 // Warp at the deepest point of the push, then the cruise it eases to.
 const WARP = { speed: 8, zoom: 2.2 } as const;
 const CRUISE_SPEED = 2;
 
 // Scroll distance the pinned hero consumes.
-const SCROLL_LENGTH = '+=200%';
+const SCROLL_LENGTH = '+=300%';
 
 // Full viewport drop: panes travel off-screen during the open, so parking
 // behind the bottom pane is not enough. The GLB still loads in that hole.
@@ -84,6 +88,7 @@ export function LandingHero({
   headline,
   subtitle,
   seeMore,
+  exhibitName,
   nav,
   menu,
   introDuration = 2.6,
@@ -93,6 +98,8 @@ export function LandingHero({
   const gateRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const warpRef = useRef<StarfieldWarp>({ speed: 1, zoom: 1 });
+  const rocketPose = useRef<RocketPose>({ ...REST_ROCKET_POSE });
+  const portal = useRef({ ...REST_PORTAL });
   const [introDone, setIntroDone] = useState(false);
   // Two flags rather than one: the gate leads the dial in and trails it out,
   // and while they disagree a transition is still running.
@@ -151,6 +158,8 @@ export function LandingHero({
             return;
           }
 
+          gsap.set(rocketPose.current, { ...REST_ROCKET_POSE });
+          gsap.set(portal.current, { ...REST_PORTAL });
           gsap.set('.landing-copy', { autoAlpha: 0 });
           gsap.set('.see-more', { autoAlpha: 0 });
           gsap.set('.hero-rocket', { yPercent: ROCKET_ENTRY });
@@ -185,13 +194,25 @@ export function LandingHero({
             )
             .to(
               '.hero-interior',
-              { scale: INTERIOR_SCALE, ease: 'none', duration: 0.5 },
+              { scale: INTERIOR_SCALE, ease: 'none', duration: 0.7 },
               0,
             )
             .to(
               '.hero-interior',
-              { autoAlpha: 0, ease: 'none', duration: 0.12 },
-              0.38,
+              { autoAlpha: 0, ease: 'none', duration: 0.18 },
+              0.52,
+            )
+            .to(
+              rocketPose.current,
+              {
+                lift: 1,
+                tilt: ROCKET_FLY_TILT,
+                spin: ROCKET_FLY_SPIN,
+                explode: 0,
+                ease: 'none',
+                duration: 0.18,
+              },
+              0.52,
             )
             .to(
               warpRef.current,
@@ -203,6 +224,32 @@ export function LandingHero({
               { speed: CRUISE_SPEED, ease: 'power2.out', duration: 0.28 },
               0.7,
             );
+
+          if (ROCKET_DISASSEMBLE) {
+            flyby.to(
+              rocketPose.current,
+              { explode: 1, ease: 'none', duration: 0.45 },
+              0.98,
+            );
+          }
+
+          if (ROCKET_PORTAL) {
+            flyby.set(
+              '.rocket-exhibit, .dissolve-overlay',
+              { autoAlpha: 0 },
+              0,
+            );
+            flyby.set(
+              '.rocket-exhibit, .dissolve-overlay',
+              { autoAlpha: 1 },
+              0.98,
+            );
+            flyby.to(
+              portal.current,
+              { dissolve: 1, ease: 'none', duration: 0.45 },
+              0.98,
+            );
+          }
 
           // When the panes have parked, plus a beat. Everything the gate was
           // hiding arrives together from here.
@@ -364,13 +411,19 @@ export function LandingHero({
           <SeeMoreCue label={seeMore} href="#after-hero" />
         </div>
       </section>
+      {ROCKET_PORTAL ? (
+        <>
+          <RocketExhibit name={exhibitName} />
+          <DissolveOverlay dissolveRef={portal} rootRef={rootRef} />
+        </>
+      ) : null}
       <GateFrame
         ref={gateRef}
         metalSrc={metalSrc}
         logoSrc={logoSrc}
         stage={
           <div className="hero-rocket" aria-hidden="true">
-            <HeroRocket />
+            <HeroRocket poseRef={rocketPose} />
           </div>
         }
       >
