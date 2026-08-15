@@ -10,6 +10,7 @@ import {
   Texture,
   Vector2,
   WebGLRenderer,
+  type IUniform,
 } from 'three';
 
 import { type PortalState } from '@/lib/rocket-portal';
@@ -130,6 +131,16 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
+type DissolveUniforms = {
+  uTexture: IUniform<Texture>;
+  uResolution: IUniform<Vector2>;
+  uDissolve: IUniform<number>;
+  uCenter: IUniform<Vector2>;
+  uGrayscale: IUniform<number>;
+  uEdgeIntensity: IUniform<number>;
+  uEdgeBrightness: IUniform<number>;
+};
+
 type MountArgs = {
   container: HTMLElement;
   dissolveRef: RefObject<PortalState>;
@@ -160,16 +171,18 @@ export function mountDissolve({
   texture.magFilter = LinearFilter;
   texture.needsUpdate = true;
 
+  const uniforms: DissolveUniforms = {
+    uTexture: { value: texture },
+    uResolution: { value: new Vector2(1, 1) },
+    uDissolve: { value: 0 },
+    uCenter: { value: new Vector2(0.5, 0.5) },
+    uGrayscale: { value: 0 },
+    uEdgeIntensity: { value: 0 },
+    uEdgeBrightness: { value: 1 },
+  };
+
   const material = new ShaderMaterial({
-    uniforms: {
-      uTexture: { value: texture },
-      uResolution: { value: new Vector2(1, 1) },
-      uDissolve: { value: 0 },
-      uCenter: { value: new Vector2(0.5, 0.5) },
-      uGrayscale: { value: 0 },
-      uEdgeIntensity: { value: 0 },
-      uEdgeBrightness: { value: 1 },
-    },
+    uniforms,
     vertexShader,
     fragmentShader,
     transparent: true,
@@ -186,7 +199,7 @@ export function mountDissolve({
     renderer.getDrawingBufferSize(buf);
     capture.width = buf.x;
     capture.height = buf.y;
-    material.uniforms.uResolution.value.copy(buf);
+    uniforms.uResolution.value.copy(buf);
   };
 
   sizeTo(container.clientWidth, container.clientHeight);
@@ -208,10 +221,10 @@ export function mountDissolve({
     if (rocket) captureCtx.drawImage(rocket, 0, 0, capture.width, capture.height);
     texture.needsUpdate = true;
 
-    material.uniforms.uDissolve.value = progress;
-    material.uniforms.uGrayscale.value = Math.min(1, progress / 0.4);
-    material.uniforms.uEdgeIntensity.value = progress * 0.5;
-    material.uniforms.uEdgeBrightness.value = 1 - progress;
+    uniforms.uDissolve.value = progress;
+    uniforms.uGrayscale.value = Math.min(1, progress / 0.4);
+    uniforms.uEdgeIntensity.value = progress * 0.5;
+    uniforms.uEdgeBrightness.value = 1 - progress;
 
     renderer.render(scene, camera);
   };

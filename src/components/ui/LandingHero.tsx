@@ -3,7 +3,10 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useEffect, useRef, useState } from 'react';
 
-import { CircularMenu, type CircularMenuItem } from '@/components/ui/CircularMenu';
+import {
+  CircularMenu,
+  type CircularMenuItem,
+} from '@/components/ui/CircularMenu';
 import { DissolveOverlay } from '@/components/ui/DissolveOverlay';
 import { GateFrame } from '@/components/ui/GateFrame';
 import { GateNav } from '@/components/ui/GateNav';
@@ -19,9 +22,19 @@ import {
   perGatePane,
   readGateGeometry,
 } from '@/lib/gate';
-import { REST_ROCKET_POSE, ROCKET_FLY_SPIN, ROCKET_FLY_TILT, type RocketPose } from '@/lib/rocket';
+import {
+  REST_ROCKET_POSE,
+  ROCKET_FLY_SPIN,
+  ROCKET_FLY_TILT,
+  type RocketPose,
+} from '@/lib/rocket';
 import { ROCKET_DISASSEMBLE } from '@/lib/rocket-disassemble';
 import { REST_PORTAL, ROCKET_PORTAL } from '@/lib/rocket-portal';
+import {
+  getSmoothScroll,
+  startInternalRaf,
+  stopInternalRaf,
+} from '@/lib/smooth-scroll';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -36,6 +49,7 @@ type LandingHeroProps = {
   subtitle: string;
   seeMore: string;
   exhibitName: string;
+  exhibitFxLabel: string;
   nav: {
     label: string;
     brand: string;
@@ -89,6 +103,7 @@ export function LandingHero({
   subtitle,
   seeMore,
   exhibitName,
+  exhibitFxLabel,
   nav,
   menu,
   introDuration = 2.6,
@@ -105,6 +120,30 @@ export function LandingHero({
   // and while they disagree a transition is still running.
   const [gateShut, setGateShut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [exhibitFx, setExhibitFx] = useState(false);
+
+  /**
+   * One frame loop for the page: Lenis moves the scroll and ScrollTrigger reads
+   * it in the same tick, so the pinned flyby cannot trail the wheel by a frame.
+   */
+  useEffect(() => {
+    const lenis = getSmoothScroll();
+    const drive = (time: number) => lenis.raf(time * 1000);
+
+    stopInternalRaf();
+    const unsubscribe = lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(drive);
+    // Scrub reacts to scroll deltas, so a frame the tab dropped must not be
+    // smoothed away into a jump.
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      unsubscribe();
+      gsap.ticker.remove(drive);
+      gsap.ticker.lagSmoothing(500, 33);
+      startInternalRaf();
+    };
+  }, []);
 
   /**
    * Scrolling during the opening would desync the gate from the scroll
@@ -118,13 +157,13 @@ export function LandingHero({
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!holdForIntro && !gateShut) return;
 
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    if (holdForIntro) window.scrollTo(0, 0);
+    // A stopped Lenis clips overflow on the root, so wheel, touch, keyboard
+    // and scrollbar are all held, not just the smoothed input.
+    const lenis = getSmoothScroll();
+    lenis.stop();
+    if (holdForIntro) lenis.scrollTo(0, { immediate: true, force: true });
 
-    return () => {
-      document.body.style.overflow = previous;
-    };
+    return () => lenis.start();
   }, [introDone, gateShut]);
 
   const { contextSafe } = useGSAP(
@@ -249,6 +288,7 @@ export function LandingHero({
               { dissolve: 1, ease: 'none', duration: 0.45 },
               0.98,
             );
+            flyby.add(() => setExhibitFx(true), 0.98);
           }
 
           // When the panes have parked, plus a beat. Everything the gate was
@@ -413,7 +453,11 @@ export function LandingHero({
       </section>
       {ROCKET_PORTAL ? (
         <>
-          <RocketExhibit name={exhibitName} />
+          <RocketExhibit
+            name={exhibitName}
+            fxLabel={exhibitFxLabel}
+            fx={exhibitFx}
+          />
           <DissolveOverlay dissolveRef={portal} rootRef={rootRef} />
         </>
       ) : null}

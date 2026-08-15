@@ -1,0 +1,238 @@
+/**
+ * Bake a cyan blueprint plate from the internals PNG, and stamp a
+ * pixelated noisy hole that follows the pointer.
+ */
+
+export const XRAY_CELL = 12;
+
+function hash2(x: number, y: number): number {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function noise2(x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const a = hash2(x0, y0);
+  const b = hash2(x0 + 1, y0);
+  const c = hash2(x0, y0 + 1);
+  const d = hash2(x0 + 1, y0 + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+function fbm2(x: number, y: number): number {
+  let value = 0;
+  let amp = 0.5;
+  let freq = 1;
+  for (let i = 0; i < 4; i += 1) {
+    value += amp * noise2(x * freq, y * freq);
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return value;
+}
+
+function lumAt(lum: Float32Array, width: number, x: number, y: number): number {
+  return lum[y * width + x] ?? 0;
+}
+
+export type Rgb = { r: number; g: number; b: number };
+
+const FALLBACK_TINT: Rgb = { r: 96, g: 165, b: 250 };
+
+export function parseHexRgb(hex: string): Rgb {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  const raw = match?.[1];
+  if (!raw) return FALLBACK_TINT;
+  const n = Number.parseInt(raw, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+/**
+ * Soft cyan blueprint plate. Empty PNG stays transparent so the rocket
+ * still reads through the hole.
+ */
+export function bakeXrayPlate(
+  image: HTMLImageElement,
+  tint: Rgb = FALLBACK_TINT,
+): HTMLCanvasElement {
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  const src = document.createElement('canvas');
+  src.width = width;
+  src.height = height;
+  const srcCtx = src.getContext('2d', { willReadFrequently: true });
+  if (!srcCtx) return src;
+
+  srcCtx.drawImage(image, 0, 0);
+  const pixels = srcCtx.getImageData(0, 0, width, height).data;
+  const lum = new Float32Array(width * height);
+
+  for (let i = 0; i < lum.length; i += 1) {
+    const offset = i * 4;
+    const r = pixels[offset] ?? 0;
+    const g = pixels[offset + 1] ?? 0;
+    const b = pixels[offset + 2] ?? 0;
+    const y = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    lum[i] = Math.min(1, Math.max(0, (y - 0.05) * 1.2));
+  }
+
+  const out = srcCtx.createImageData(width, height);
+  const dest = out.data;
+  const lastX = width - 1;
+  const lastY = height - 1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = y * width + x;
+      const L = lum[i] ?? 0;
+      let gx = 0;
+      let gy = 0;
+      if (x > 0 && x < lastX && y > 0 && y < lastY) {
+        const nw = lumAt(lum, width, x - 1, y - 1);
+        const n = lumAt(lum, width, x, y - 1);
+        const ne = lumAt(lum, width, x + 1, y - 1);
+        const w = lumAt(lum, width, x - 1, y);
+        const e = lumAt(lum, width, x + 1, y);
+        const sw = lumAt(lum, width, x - 1, y + 1);
+        const s = lumAt(lum, width, x, y + 1);
+        const se = lumAt(lum, width, x + 1, y + 1);
+        gx = -nw + ne - 2 * w + 2 * e - sw + se;
+        gy = -nw - 2 * n - ne + sw + 2 * s + se;
+      }
+      const edge = Math.min(1, Math.hypot(gx, gy) * 1.35);
+      const grain = (hash2(x * 0.7, y * 1.3) - 0.5) * 0.08;
+      const fill = L > 0.03 ? L * 0.42 + grain : 0;
+      const v = Math.min(1, fill * 0.55 + edge * 0.7);
+      const alpha = v < 0.04 ? 0 : Math.min(0.78, 0.22 + v * 0.55);
+      const offset = i * 4;
+      dest[offset] = Math.round(tint.r * v);
+      dest[offset + 1] = Math.round(tint.g * v);
+      dest[offset + 2] = Math.round(tint.b * v);
+      dest[offset + 3] = Math.round(alpha * 255);
+    }
+  }
+
+  srcCtx.putImageData(out, 0, 0);
+
+  const plate = document.createElement('canvas');
+  plate.width = width;
+  plate.height = height;
+  const plateCtx = plate.getContext('2d');
+  if (!plateCtx) return src;
+
+  plateCtx.filter = 'blur(0.7px)';
+  plateCtx.globalAlpha = 0.4;
+  plateCtx.drawImage(src, 0, 0);
+  plateCtx.filter = 'none';
+  plateCtx.globalAlpha = 1;
+  plateCtx.drawImage(src, 0, 0);
+  return plate;
+}
+
+export function makeGrainPattern(
+  ctx: CanvasRenderingContext2D,
+  tint: Rgb = FALLBACK_TINT,
+): CanvasPattern | null {
+  const tile = document.createElement('canvas');
+  tile.width = 128;
+  tile.height = 128;
+  const tileCtx = tile.getContext('2d');
+  if (!tileCtx) return null;
+  const data = tileCtx.createImageData(128, 128);
+  const px = data.data;
+  for (let i = 0; i < 128 * 128; i += 1) {
+    const n = hash2(i, i * 0.37);
+    const a = 8 + hash2(i * 0.19, i) * 14;
+    const offset = i * 4;
+    px[offset] = Math.round(tint.r * n);
+    px[offset + 1] = Math.round(tint.g * n);
+    px[offset + 2] = Math.round(tint.b * n);
+    px[offset + 3] = a;
+  }
+  tileCtx.putImageData(data, 0, 0);
+  return ctx.createPattern(tile, 'repeat');
+}
+
+export function drawPixelBlob(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  seed: number,
+): void {
+  const pad = radius * 1.5;
+  const x0 = Math.floor((cx - pad) / XRAY_CELL) * XRAY_CELL;
+  const y0 = Math.floor((cy - pad) / XRAY_CELL) * XRAY_CELL;
+  const x1 = cx + pad;
+  const y1 = cy + pad;
+
+  for (let y = y0; y <= y1; y += XRAY_CELL) {
+    for (let x = x0; x <= x1; x += XRAY_CELL) {
+      const px = x + XRAY_CELL / 2;
+      const py = y + XRAY_CELL / 2;
+      const n = fbm2(px * 0.028 + seed * 0.65, py * 0.028 - seed * 0.41);
+      const limit = radius * (0.58 + 0.52 * n);
+      if (Math.hypot(px - cx, py - cy) < limit) {
+        ctx.fillRect(x, y, XRAY_CELL, XRAY_CELL);
+      }
+    }
+  }
+}
+
+export type XrayPaint = {
+  ctx: CanvasRenderingContext2D;
+  dpr: number;
+  width: number;
+  height: number;
+  plate: HTMLCanvasElement;
+  grain: CanvasPattern | null;
+  fill: string;
+  pointerX: number;
+  pointerY: number;
+  radius: number;
+  seed: number;
+  imgX: number;
+  imgY: number;
+  imgW: number;
+  imgH: number;
+};
+
+export function paintXrayHole(frame: XrayPaint): void {
+  const { ctx, dpr, width, height } = frame;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  if (frame.radius <= 0) return;
+
+  ctx.fillStyle = frame.fill;
+  drawPixelBlob(ctx, frame.pointerX, frame.pointerY, frame.radius, frame.seed);
+  ctx.globalCompositeOperation = 'source-atop';
+  if (frame.grain) {
+    ctx.fillStyle = frame.grain;
+    const span = frame.radius * 3;
+    ctx.fillRect(
+      frame.pointerX - span,
+      frame.pointerY - span,
+      span * 2,
+      span * 2,
+    );
+  }
+  ctx.drawImage(frame.plate, frame.imgX, frame.imgY, frame.imgW, frame.imgH);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+export function syncCanvasSize(
+  canvas: HTMLCanvasElement,
+  width: number,
+  height: number,
+  dpr: number,
+): void {
+  const nextW = Math.max(1, Math.round(width * dpr));
+  const nextH = Math.max(1, Math.round(height * dpr));
+  if (canvas.width !== nextW) canvas.width = nextW;
+  if (canvas.height !== nextH) canvas.height = nextH;
+}

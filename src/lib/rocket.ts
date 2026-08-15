@@ -34,3 +34,16 @@ export const EXHIBIT_ROCKET_POSE: RocketPose = {
   spin: 0,
   explode: 0,
 };
+
+export type RocketView = 'flyby' | 'exhibit';
+
+// Horizontal exhibit fills this fraction of the viewport width.
+export const EXHIBIT_FILL = 0.75;
+
+// Internals PNG is exploded, so it must sit smaller than the assembled tube.
+export const EXHIBIT_XRAY_FILL = 0.55;
+
+// Nudge the exhibit so the name overlay clears the cradles, and so the
+// fin-heavy tail does not pull the silhouette left of centre.
+export const EXHIBIT_X = 0.025;
+export const EXHIBIT_Y = 0.06;

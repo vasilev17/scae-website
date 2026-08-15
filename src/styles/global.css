@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'lenis/dist/lenis.css';
 
 /* Subset from the licensed TTFs by scripts/build-fonts.py (Latin + Cyrillic). */
 @font-face {
@@ -51,6 +52,12 @@
   html {
     @apply overflow-x-hidden scroll-smooth;
     scrollbar-width: none;
+  }
+
+  /* Native smoothing is the no-JS fallback for anchor jumps. Once Lenis owns
+     the scroll it would fight both Lenis and ScrollTrigger. */
+  html.lenis {
+    scroll-behavior: auto;
   }
 
   body {
@@ -599,20 +606,22 @@
     position: fixed;
     inset: 0;
     z-index: 54;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3.2svh;
     background: #000;
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
   }
 
+  .rocket-exhibit-space {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
   .rocket-exhibit-stage {
-    height: min(85vw, 52vh);
-    width: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
   }
 
   .rocket-exhibit-stage > * {
@@ -620,7 +629,27 @@
     width: 100%;
   }
 
+  .rocket-exhibit-xray {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: auto;
+  }
+
+  .rocket-exhibit-xray-canvas {
+    display: block;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
   .rocket-exhibit-name {
+    position: absolute;
+    right: 0;
+    bottom: 5.5svh;
+    left: 0;
+    z-index: 3;
     font-family: var(--font-display);
     font-size: clamp(1.25rem, 4.2svh, 2.75rem);
     line-height: 1.1;

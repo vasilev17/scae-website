@@ -1,9 +1,4 @@
-import {
-  Canvas,
-  useFrame,
-  useLoader,
-  useThree,
-} from '@react-three/fiber';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react';
 import {
   ACESFilmicToneMapping,
@@ -21,7 +16,14 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import rocketUrl from '@/assets/generated/rocket.glb?url';
 import { ROCKET_MARK_ENABLED, RocketMark } from '@/components/ui/RocketMark';
-import { type RocketPose } from '@/lib/rocket';
+import { RocketStands } from '@/components/ui/RocketStand';
+import {
+  EXHIBIT_FILL,
+  EXHIBIT_X,
+  EXHIBIT_Y,
+  type RocketPose,
+  type RocketView,
+} from '@/lib/rocket';
 import {
   isRocketPartId,
   ROCKET_DISASSEMBLE,
@@ -73,13 +75,15 @@ type RocketPart = {
 
 type RocketProps = {
   poseRef: RefObject<RocketPose>;
+  view: RocketView;
 };
 
-function Rocket({ poseRef }: RocketProps) {
+function Rocket({ poseRef, view }: RocketProps) {
   const gltf = useLoader(GLTFLoader, rocketUrl, withMeshopt);
   const viewport = useThree((state) => state.viewport);
   const invalidate = useThree((state) => state.invalidate);
   const groupRef = useRef<Group>(null);
+  const tiltRef = useRef<Group>(null);
   const bodyRef = useRef<Group>(null);
   const markGroupRef = useRef<Group>(null);
 
@@ -128,15 +132,24 @@ function Rocket({ poseRef }: RocketProps) {
     // Pivot is the airframe centre. Rest parks that centre so the nose still
     // sits at NOSE_TIP; lift 1 puts it on the viewport origin.
     const restY = -viewport.height * NOSE_TIP;
-    group.position.y = restY * (1 - lift);
-    group.rotation.z = tilt;
+    if (view === 'exhibit') {
+      group.position.x = viewport.width * EXHIBIT_X;
+      group.position.y = viewport.height * EXHIBIT_Y;
+    } else {
+      group.position.x = 0;
+      group.position.y = restY * (1 - lift);
+    }
+    if (tiltRef.current) tiltRef.current.rotation.z = tilt;
     if (bodyRef.current) bodyRef.current.rotation.y = spin;
 
-    const amount =
-      ROCKET_DISASSEMBLE && Number.isFinite(explode) ? explode : 0;
+    const amount = ROCKET_DISASSEMBLE && Number.isFinite(explode) ? explode : 0;
     for (const { id, object, rest } of parts) {
       const [x, y, z] = ROCKET_PART_OFFSETS[id];
-      object.position.set(rest[0] + x * amount, rest[1] + y * amount, rest[2] + z * amount);
+      object.position.set(
+        rest[0] + x * amount,
+        rest[1] + y * amount,
+        rest[2] + z * amount,
+      );
     }
     const mark = markGroupRef.current;
     if (mark) {
@@ -147,29 +160,36 @@ function Rocket({ poseRef }: RocketProps) {
 
   if (height === 0) return null;
 
-  const scale = viewport.height / height;
+  const scale =
+    view === 'exhibit'
+      ? (viewport.width * EXHIBIT_FILL) / height
+      : viewport.height / height;
 
   return (
     <group ref={groupRef} scale={scale}>
-      <group ref={bodyRef} position={[0, -height / 2, 0]}>
-        <primitive object={model} />
-        {ROCKET_MARK_ENABLED ? (
-          <group ref={markGroupRef}>
-            <Suspense fallback={null}>
-              <RocketMark />
-            </Suspense>
-          </group>
-        ) : null}
+      <group ref={tiltRef}>
+        <group ref={bodyRef} position={[0, -height / 2, 0]}>
+          <primitive object={model} />
+          {ROCKET_MARK_ENABLED ? (
+            <group ref={markGroupRef}>
+              <Suspense fallback={null}>
+                <RocketMark />
+              </Suspense>
+            </group>
+          ) : null}
+        </group>
       </group>
+      {view === 'exhibit' ? <RocketStands length={height} /> : null}
     </group>
   );
 }
 
 type RocketSceneProps = {
   poseRef: RefObject<RocketPose>;
+  view?: RocketView;
 };
 
-export function RocketScene({ poseRef }: RocketSceneProps) {
+export function RocketScene({ poseRef, view = 'flyby' }: RocketSceneProps) {
   return (
     <Canvas
       className="h-full w-full"
@@ -195,7 +215,7 @@ export function RocketScene({ poseRef }: RocketSceneProps) {
       {/* Rim from behind, separates black paint from the starfield. */}
       <directionalLight position={[1.8, 2, -3.6]} intensity={1.1} />
       <Suspense fallback={null}>
-        <Rocket poseRef={poseRef} />
+        <Rocket poseRef={poseRef} view={view} />
       </Suspense>
     </Canvas>
   );
