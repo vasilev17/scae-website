@@ -37,6 +37,12 @@ export const EXHIBIT_ROCKET_POSE: RocketPose = {
 
 export type RocketView = 'flyby' | 'exhibit';
 
+// Coarse reject only. Real hit is the WebGL silhouette (body + fins).
+export const EXHIBIT_HULL_SLENDERNESS = 0.32;
+
+// Extra CSS pixels around the silhouette so thin fin edges still count.
+export const EXHIBIT_XRAY_HIT_PAD = 6;
+
 // Horizontal exhibit fills this fraction of the viewport width.
 export const EXHIBIT_FILL = 0.75;
 
@@ -46,7 +52,9 @@ export const EXHIBIT_FILL = 0.75;
 // X / Y = extra shift as a fraction of viewport; +X is right, +Y is up.
 export const EXHIBIT_XRAY_FILL = 0.525;
 export const EXHIBIT_XRAY_X = -0.04;
-export const EXHIBIT_XRAY_Y = 0.065;
+export const EXHIBIT_XRAY_Y = 0.06;
+// Hole radius as a fraction of the shorter viewport side.
+export const EXHIBIT_XRAY_HOLE = 0.15;
 
 // Nudge the exhibit so the name overlay clears the cradles, and so the
 // fin-heavy tail does not pull the silhouette left of centre.

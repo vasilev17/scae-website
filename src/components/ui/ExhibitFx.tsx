@@ -3,12 +3,23 @@ import { useEffect, useRef } from 'react';
 import internalUrl from '@/assets/images/commodore-internal.png?url';
 import {
   bakeXrayPlate,
+  hitRocketSilhouette,
   makeGrainPattern,
   paintXrayHole,
   parseHexRgb,
   syncCanvasSize,
 } from '@/components/ui/xray-runtime';
-import { EXHIBIT_XRAY_FILL, EXHIBIT_XRAY_X, EXHIBIT_XRAY_Y } from '@/lib/rocket';
+import {
+  EXHIBIT_FILL,
+  EXHIBIT_HULL_SLENDERNESS,
+  EXHIBIT_X,
+  EXHIBIT_XRAY_FILL,
+  EXHIBIT_XRAY_HIT_PAD,
+  EXHIBIT_XRAY_HOLE,
+  EXHIBIT_XRAY_X,
+  EXHIBIT_XRAY_Y,
+  EXHIBIT_Y,
+} from '@/lib/rocket';
 
 /**
  * Hover X-ray: a pixelated noisy hole tracks the pointer and stamps a
@@ -40,13 +51,71 @@ export function ExhibitFx() {
     let pointerX = 0;
     let pointerY = 0;
     let seed = 0;
-    let on = false;
+    let want = 0;
+    let open = 0;
     let lastX = 0;
     let lastY = 0;
     let hasLast = false;
     let dead = false;
+    let raf = 0;
+    let lastTick = 0;
 
     const dprOf = () => Math.min(window.devicePixelRatio || 1, 2);
+
+    const imageBox = (width: number, height: number) => {
+      if (!plate) return null;
+      const imgW = width * EXHIBIT_XRAY_FILL;
+      const imgH = imgW * (plate.height / plate.width);
+      return {
+        imgW,
+        imgH,
+        imgX: width * 0.5 - imgW * 0.5 + EXHIBIT_XRAY_X * width,
+        imgY: height * 0.5 - imgH * 0.5 - EXHIBIT_XRAY_Y * height,
+      };
+    };
+
+    const hullBox = (width: number, height: number) => {
+      const hullW = width * EXHIBIT_FILL;
+      const hullH = hullW * EXHIBIT_HULL_SLENDERNESS;
+      return {
+        x: width * 0.5 - hullW * 0.5 + EXHIBIT_X * width,
+        y: height * 0.5 - hullH * 0.5 - EXHIBIT_Y * height,
+        w: hullW,
+        h: hullH,
+      };
+    };
+
+    const overHull = (
+      px: number,
+      py: number,
+      hull: ReturnType<typeof hullBox>,
+    ) =>
+      px >= hull.x &&
+      px <= hull.x + hull.w &&
+      py >= hull.y &&
+      py <= hull.y + hull.h;
+
+    const stageCanvas = () => {
+      const node =
+        root.parentElement?.querySelector('.rocket-exhibit-stage canvas') ??
+        null;
+      return node instanceof HTMLCanvasElement ? node : null;
+    };
+
+    const overRocket = (px: number, py: number, width: number, height: number) => {
+      const hull = hullBox(width, height);
+      if (!overHull(px, py, hull)) return false;
+      const rocket = stageCanvas();
+      if (!rocket) return false;
+      return hitRocketSilhouette(
+        rocket,
+        px,
+        py,
+        width,
+        height,
+        EXHIBIT_XRAY_HIT_PAD,
+      );
+    };
 
     const paint = () => {
       const box = root.getBoundingClientRect();
@@ -57,9 +126,13 @@ export function ExhibitFx() {
       const dpr = dprOf();
       syncCanvasSize(canvas, width, height, dpr);
 
-      const imgW = width * EXHIBIT_XRAY_FILL;
-      const imgH = imgW * (plate.height / plate.width);
-      const radius = on ? Math.min(width, height) * (reduce ? 0.42 : 0.2) : 0;
+      const layout = imageBox(width, height);
+      if (!layout) return;
+      const full =
+        Math.min(width, height) *
+        (reduce ? EXHIBIT_XRAY_HOLE * 2.1 : EXHIBIT_XRAY_HOLE);
+      // Smoothstep so the hole blooms from a spark instead of popping.
+      const bloom = open * open * (3 - 2 * open);
 
       paintXrayHole({
         ctx,
@@ -71,13 +144,40 @@ export function ExhibitFx() {
         fill,
         pointerX,
         pointerY,
-        radius,
+        radius: full * (0.18 + 0.82 * bloom),
         seed: reduce ? 0 : seed,
-        imgX: width * 0.5 - imgW * 0.5 + EXHIBIT_XRAY_X * width,
-        imgY: height * 0.5 - imgH * 0.5 - EXHIBIT_XRAY_Y * height,
-        imgW,
-        imgH,
+        alpha: Math.min(1, open * 1.35),
+        imgX: layout.imgX,
+        imgY: layout.imgY,
+        imgW: layout.imgW,
+        imgH: layout.imgH,
+        rocket: stageCanvas(),
+        tint,
       });
+    };
+
+    const tick = (now: number) => {
+      raf = 0;
+      if (dead) return;
+      if (lastTick === 0) lastTick = now;
+      const dt = Math.min(0.05, (now - lastTick) / 1000);
+      lastTick = now;
+      const tau = want > open ? 0.18 : 0.12;
+      open += (want - open) * (1 - Math.exp(-dt / tau));
+      if (Math.abs(want - open) < 0.003) open = want;
+      paint();
+      if (open !== want) raf = requestAnimationFrame(tick);
+      else lastTick = 0;
+    };
+
+    const setWant = (next: number) => {
+      want = next;
+      if (reduce) {
+        open = want;
+        paint();
+        return;
+      }
+      if (!raf) raf = requestAnimationFrame(tick);
     };
 
     const image = new Image();
@@ -94,22 +194,29 @@ export function ExhibitFx() {
     const move = (event: PointerEvent) => {
       const box = root.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) return;
-      pointerX = event.clientX - box.left;
-      pointerY = event.clientY - box.top;
-      on = true;
-      if (!reduce && hasLast) {
-        seed += Math.hypot(pointerX - lastX, pointerY - lastY) * 0.014;
+      const x = event.clientX - box.left;
+      const y = event.clientY - box.top;
+      const hit = overRocket(x, y, box.width, box.height);
+      if (hit) {
+        pointerX = x;
+        pointerY = y;
+        if (!reduce && hasLast) {
+          seed += Math.hypot(pointerX - lastX, pointerY - lastY) * 0.014;
+        }
+        lastX = pointerX;
+        lastY = pointerY;
+        hasLast = true;
+        if (want !== 1) setWant(1);
+        else paint();
+      } else {
+        hasLast = false;
+        if (want !== 0) setWant(0);
       }
-      lastX = pointerX;
-      lastY = pointerY;
-      hasLast = true;
-      paint();
     };
 
     const leave = () => {
-      on = false;
       hasLast = false;
-      paint();
+      setWant(0);
     };
 
     const onResize = () => paint();
@@ -119,6 +226,7 @@ export function ExhibitFx() {
     window.addEventListener('resize', onResize);
     return () => {
       dead = true;
+      if (raf) cancelAnimationFrame(raf);
       root.removeEventListener('pointermove', move);
       root.removeEventListener('pointerleave', leave);
       window.removeEventListener('resize', onResize);

@@ -196,18 +196,145 @@ export type XrayPaint = {
   pointerY: number;
   radius: number;
   seed: number;
+  alpha: number;
   imgX: number;
   imgY: number;
   imgW: number;
   imgH: number;
+  rocket: HTMLCanvasElement | null;
+  tint: Rgb;
 };
+
+type HullScratch = {
+  src: HTMLCanvasElement;
+  srcCtx: CanvasRenderingContext2D;
+  edge: HTMLCanvasElement;
+  edgeCtx: CanvasRenderingContext2D;
+};
+
+let hullScratch: HullScratch | null = null;
+
+function getHullScratch(): HullScratch | null {
+  if (hullScratch) return hullScratch;
+  const src = document.createElement('canvas');
+  const srcCtx = src.getContext('2d', { willReadFrequently: true });
+  const edge = document.createElement('canvas');
+  const edgeCtx = edge.getContext('2d');
+  if (!srcCtx || !edgeCtx) return null;
+  hullScratch = { src, srcCtx, edge, edgeCtx };
+  return hullScratch;
+}
+
+/**
+ * Sobel the exhibit WebGL canvas inside the hole: silhouette from alpha,
+ * panel lines from luminance. Stamped source-atop so it stays in the blob.
+ */
+function stampHullEdges(ctx: CanvasRenderingContext2D, frame: XrayPaint): void {
+  const rocket = frame.rocket;
+  if (!rocket || rocket.width === 0 || rocket.height === 0) return;
+  const scratch = getHullScratch();
+  if (!scratch) return;
+
+  const pad = frame.radius * 1.5;
+  const x0 = Math.max(0, Math.floor(frame.pointerX - pad));
+  const y0 = Math.max(0, Math.floor(frame.pointerY - pad));
+  const x1 = Math.min(frame.width, Math.ceil(frame.pointerX + pad));
+  const y1 = Math.min(frame.height, Math.ceil(frame.pointerY + pad));
+  const cssW = x1 - x0;
+  const cssH = y1 - y0;
+  if (cssW < 2 || cssH < 2) return;
+
+  const sw = Math.max(2, cssW);
+  const sh = Math.max(2, cssH);
+  if (scratch.src.width !== sw) scratch.src.width = sw;
+  if (scratch.src.height !== sh) scratch.src.height = sh;
+  if (scratch.edge.width !== sw) scratch.edge.width = sw;
+  if (scratch.edge.height !== sh) scratch.edge.height = sh;
+
+  const sx = (x0 / frame.width) * rocket.width;
+  const sy = (y0 / frame.height) * rocket.height;
+  const sWidth = (cssW / frame.width) * rocket.width;
+  const sHeight = (cssH / frame.height) * rocket.height;
+  scratch.srcCtx.clearRect(0, 0, sw, sh);
+  scratch.srcCtx.drawImage(rocket, sx, sy, sWidth, sHeight, 0, 0, sw, sh);
+
+  const pixels = scratch.srcCtx.getImageData(0, 0, sw, sh).data;
+  const lum = new Float32Array(sw * sh);
+  const alpha = new Float32Array(sw * sh);
+  for (let i = 0; i < lum.length; i += 1) {
+    const offset = i * 4;
+    const r = pixels[offset] ?? 0;
+    const g = pixels[offset + 1] ?? 0;
+    const b = pixels[offset + 2] ?? 0;
+    const a = pixels[offset + 3] ?? 0;
+    lum[i] = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    alpha[i] = a / 255;
+  }
+
+  const out = scratch.edgeCtx.createImageData(sw, sh);
+  const dest = out.data;
+  const lastX = sw - 1;
+  const lastY = sh - 1;
+  const sample = (map: Float32Array, x: number, y: number) =>
+    map[y * sw + x] ?? 0;
+
+  for (let y = 0; y < sh; y += 1) {
+    for (let x = 0; x < sw; x += 1) {
+      let gxA = 0;
+      let gyA = 0;
+      let gxL = 0;
+      let gyL = 0;
+      if (x > 0 && x < lastX && y > 0 && y < lastY) {
+        const aNw = sample(alpha, x - 1, y - 1);
+        const aN = sample(alpha, x, y - 1);
+        const aNe = sample(alpha, x + 1, y - 1);
+        const aW = sample(alpha, x - 1, y);
+        const aE = sample(alpha, x + 1, y);
+        const aSw = sample(alpha, x - 1, y + 1);
+        const aS = sample(alpha, x, y + 1);
+        const aSe = sample(alpha, x + 1, y + 1);
+        gxA = -aNw + aNe - 2 * aW + 2 * aE - aSw + aSe;
+        gyA = -aNw - 2 * aN - aNe + aSw + 2 * aS + aSe;
+        const lNw = sample(lum, x - 1, y - 1);
+        const lN = sample(lum, x, y - 1);
+        const lNe = sample(lum, x + 1, y - 1);
+        const lW = sample(lum, x - 1, y);
+        const lE = sample(lum, x + 1, y);
+        const lSw = sample(lum, x - 1, y + 1);
+        const lS = sample(lum, x, y + 1);
+        const lSe = sample(lum, x + 1, y + 1);
+        gxL = -lNw + lNe - 2 * lW + 2 * lE - lSw + lSe;
+        gyL = -lNw - 2 * lN - lNe + lSw + 2 * lS + lSe;
+      }
+      const cover = sample(alpha, x, y);
+      const silhouette = Math.min(1, Math.hypot(gxA, gyA) * 1.55);
+      const crease = Math.min(1, Math.hypot(gxL, gyL) * 1.05) * cover;
+      const edge = Math.min(1, silhouette * 1.05 + crease * 0.55);
+      const offset = (y * sw + x) * 4;
+      if (edge < 0.22) {
+        dest[offset + 3] = 0;
+        continue;
+      }
+      dest[offset] = Math.round(118 + edge * 42);
+      dest[offset + 1] = Math.round(168 + edge * 38);
+      dest[offset + 2] = Math.round(214 + edge * 28);
+      dest[offset + 3] = Math.round(Math.min(1, edge) * 220);
+    }
+  }
+
+  scratch.edgeCtx.putImageData(out, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(scratch.edge, x0, y0);
+}
 
 export function paintXrayHole(frame: XrayPaint): void {
   const { ctx, dpr, width, height } = frame;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  if (frame.radius <= 0) return;
+  if (frame.radius <= 0 || frame.alpha <= 0) return;
 
+  ctx.save();
+  ctx.globalAlpha = frame.alpha;
   ctx.fillStyle = frame.fill;
   drawPixelBlob(ctx, frame.pointerX, frame.pointerY, frame.radius, frame.seed);
   ctx.globalCompositeOperation = 'source-atop';
@@ -222,7 +349,75 @@ export function paintXrayHole(frame: XrayPaint): void {
     );
   }
   ctx.drawImage(frame.plate, frame.imgX, frame.imgY, frame.imgW, frame.imgH);
+  stampHullEdges(ctx, frame);
   ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
+type HitScratch = {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+};
+
+let hitScratch: HitScratch | null = null;
+
+function getHitScratch(): HitScratch | null {
+  if (hitScratch) return hitScratch;
+  const canvas = document.createElement('canvas');
+  canvas.width = 12;
+  canvas.height = 12;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  hitScratch = { canvas, ctx };
+  return hitScratch;
+}
+
+/**
+ * True when the exhibit WebGL canvas has opaque pixels under the pointer.
+ * Empty starfield stays a miss; fins and the tube still count.
+ */
+export function hitRocketSilhouette(
+  rocket: HTMLCanvasElement,
+  cssX: number,
+  cssY: number,
+  cssW: number,
+  cssH: number,
+  padCss: number,
+): boolean {
+  if (rocket.width === 0 || rocket.height === 0 || cssW <= 0 || cssH <= 0) {
+    return false;
+  }
+  const scratch = getHitScratch();
+  if (!scratch) return false;
+
+  const pad = Math.max(0, padCss);
+  const x0 = cssX - pad;
+  const y0 = cssY - pad;
+  const span = pad * 2 || 1;
+  const sx = (x0 / cssW) * rocket.width;
+  const sy = (y0 / cssH) * rocket.height;
+  const sw = (span / cssW) * rocket.width;
+  const sh = (span / cssH) * rocket.height;
+  if (sw < 0.5 || sh < 0.5) return false;
+
+  const { canvas, ctx } = scratch;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(
+    rocket,
+    sx,
+    sy,
+    sw,
+    sh,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 3; i < pixels.length; i += 4) {
+    if ((pixels[i] ?? 0) > 18) return true;
+  }
+  return false;
 }
 
 export function syncCanvasSize(
