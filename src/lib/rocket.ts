@@ -40,8 +40,13 @@ export type RocketView = 'flyby' | 'exhibit';
 // Horizontal exhibit fills this fraction of the viewport width.
 export const EXHIBIT_FILL = 0.75;
 
-// Internals PNG is exploded, so it must sit smaller than the assembled tube.
-export const EXHIBIT_XRAY_FILL = 0.55;
+// Internals PNG size and nudge. Independent of the 3D rocket so the
+// blueprint can be lined up without moving the model.
+// FILL = width as a fraction of the viewport (0.55 = 55% wide).
+// X / Y = extra shift as a fraction of viewport; +X is right, +Y is up.
+export const EXHIBIT_XRAY_FILL = 0.525;
+export const EXHIBIT_XRAY_X = -0.04;
+export const EXHIBIT_XRAY_Y = 0.065;
 
 // Nudge the exhibit so the name overlay clears the cradles, and so the
 // fin-heavy tail does not pull the silhouette left of centre.

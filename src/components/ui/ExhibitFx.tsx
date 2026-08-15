@@ -8,7 +8,7 @@ import {
   parseHexRgb,
   syncCanvasSize,
 } from '@/components/ui/xray-runtime';
-import { EXHIBIT_X, EXHIBIT_XRAY_FILL, EXHIBIT_Y } from '@/lib/rocket';
+import { EXHIBIT_XRAY_FILL, EXHIBIT_XRAY_X, EXHIBIT_XRAY_Y } from '@/lib/rocket';
 
 /**
  * Hover X-ray: a pixelated noisy hole tracks the pointer and stamps a
@@ -73,8 +73,8 @@ export function ExhibitFx() {
         pointerY,
         radius,
         seed: reduce ? 0 : seed,
-        imgX: width * 0.5 - imgW * 0.5 + EXHIBIT_X * width,
-        imgY: height * 0.5 - imgH * 0.5 - EXHIBIT_Y * height,
+        imgX: width * 0.5 - imgW * 0.5 + EXHIBIT_XRAY_X * width,
+        imgY: height * 0.5 - imgH * 0.5 - EXHIBIT_XRAY_Y * height,
         imgW,
         imgH,
       });
