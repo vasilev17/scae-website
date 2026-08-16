@@ -1,5 +1,12 @@
+import { ContactShadows, Environment, Lightformer } from '@react-three/drei';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react';
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  type RefObject,
+} from 'react';
 import {
   ACESFilmicToneMapping,
   Box3,
@@ -16,7 +23,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import rocketUrl from '@/assets/generated/rocket.glb?url';
 import { ROCKET_MARK_ENABLED, RocketMark } from '@/components/ui/RocketMark';
-import { RocketStands } from '@/components/ui/RocketStand';
+import { RocketStands, STAND_HEIGHT } from '@/components/ui/RocketStand';
 import {
   EXHIBIT_FILL,
   EXHIBIT_X,
@@ -25,7 +32,9 @@ import {
   type RocketView,
 } from '@/lib/rocket';
 import {
+  explodeTravel,
   isRocketPartId,
+  NOSE_SEAT,
   ROCKET_DISASSEMBLE,
   ROCKET_PART_OFFSETS,
   type RocketPartId,
@@ -54,7 +63,7 @@ const PAINT = {
   orange: { color: '#e65100', roughness: 0.62, metalness: 0 },
 } as const;
 
-function paint(material: Material) {
+function paint(material: Material, view: RocketView) {
   if (!(material instanceof MeshStandardMaterial)) return;
   material.side = DoubleSide;
   const { r, g, b } = material.color;
@@ -63,8 +72,79 @@ function paint(material: Material) {
   const finish =
     lum < 0.2 ? PAINT.black : chroma < 0.08 ? PAINT.grey : PAINT.orange;
   material.color.set(finish.color);
-  material.roughness = finish.roughness;
+  // Tent light is a giant softbox. Extra roughness kills the plastic CG sheen.
+  const rough = view === 'exhibit' ? 0.12 : 0;
+  material.roughness = Math.min(1, finish.roughness + rough);
   material.metalness = finish.metalness;
+}
+
+function FlybyLights() {
+  return (
+    <>
+      {/* Soft shop fill so the shadow side of the black nose still reads. */}
+      <hemisphereLight args={['#d0d4d8', '#161616', 0.65]} />
+      {/* Key, front-left: the vertical streak that turns the cylinder. */}
+      <directionalLight position={[-2.4, 3.2, 4.2]} intensity={3.2} />
+      {/* Weak fill, opposite side. */}
+      <directionalLight position={[3.2, 1.4, 2.2]} intensity={0.55} />
+      {/* Rim from behind, separates black paint from the starfield. */}
+      <directionalLight position={[1.8, 2, -3.6]} intensity={1.1} />
+    </>
+  );
+}
+
+function ExhibitRig() {
+  return (
+    <>
+      <ambientLight intensity={0.4} color="#fff4e4" />
+      <hemisphereLight args={['#fff7ee', '#6e685c', 0.72]} />
+      {/* Tent roof: big overhead softbox. */}
+      <directionalLight
+        position={[0.4, 4.6, 1.8]}
+        intensity={1.15}
+        color="#fffaf3"
+      />
+      {/* Bright rear wall, wrap light from behind. */}
+      <directionalLight
+        position={[0.2, 1.4, -3.4]}
+        intensity={0.55}
+        color="#ffffff"
+      />
+      {/* Weak warm fill from the open front. */}
+      <directionalLight
+        position={[-2.2, 1.8, 2.8]}
+        intensity={0.28}
+        color="#ffe8c8"
+      />
+      <Environment resolution={256} environmentIntensity={0.55}>
+        <Lightformer
+          intensity={5}
+          rotation-x={Math.PI / 2}
+          position={[0, 5, 0]}
+          scale={[12, 12, 1]}
+          color="#fff8ee"
+        />
+        <Lightformer
+          intensity={2.4}
+          position={[0, 1, -5]}
+          scale={[14, 8, 1]}
+          color="#ffffff"
+        />
+        <Lightformer
+          intensity={0.9}
+          position={[-5, 1.2, 1]}
+          scale={[4, 6, 1]}
+          color="#fff1d6"
+        />
+        <Lightformer
+          intensity={0.55}
+          position={[5, 1.2, 2]}
+          scale={[3, 5, 1]}
+          color="#e4e0d6"
+        />
+      </Environment>
+    </>
+  );
 }
 
 type RocketPart = {
@@ -107,7 +187,7 @@ function Rocket({ poseRef, view }: RocketProps) {
       const source = object.material;
       const clones = (Array.isArray(source) ? source : [source]).map((mat) => {
         const next = mat.clone();
-        paint(next);
+        paint(next, view);
         materials.push(next);
         return next;
       });
@@ -116,7 +196,7 @@ function Rocket({ poseRef, view }: RocketProps) {
 
     const height = new Box3().setFromObject(model).getSize(new Vector3()).y;
     return { model, height, materials, parts };
-  }, [gltf]);
+  }, [gltf, view]);
 
   useEffect(() => {
     invalidate();
@@ -145,10 +225,12 @@ function Rocket({ poseRef, view }: RocketProps) {
     const amount = ROCKET_DISASSEMBLE && Number.isFinite(explode) ? explode : 0;
     for (const { id, object, rest } of parts) {
       const [x, y, z] = ROCKET_PART_OFFSETS[id];
+      const travel = explodeTravel(id, amount);
+      const seat = id === 'nose' ? -NOSE_SEAT * (1 - amount) : 0;
       object.position.set(
-        rest[0] + x * amount,
-        rest[1] + y * amount,
-        rest[2] + z * amount,
+        rest[0] + x * travel,
+        rest[1] + y * travel + seat,
+        rest[2] + z * travel,
       );
     }
     const mark = markGroupRef.current;
@@ -180,6 +262,20 @@ function Rocket({ poseRef, view }: RocketProps) {
         </group>
       </group>
       {view === 'exhibit' ? <RocketStands length={height} /> : null}
+      {view === 'exhibit' ? (
+        <ContactShadows
+          // Below the feet. On the plane it z-fights and paints gray cards
+          // at the stand bases and the down fin.
+          position={[0, -STAND_HEIGHT - 0.012, 0]}
+          opacity={0.58}
+          scale={2.6}
+          blur={2.6}
+          far={0.55}
+          frames={1}
+          resolution={512}
+          color="#1a1210"
+        />
+      ) : null}
     </group>
   );
 }
@@ -203,17 +299,10 @@ export function RocketScene({ poseRef, view = 'flyby' }: RocketSceneProps) {
       camera={{ fov: FOV, position: [0, 0, CAMERA_DISTANCE] }}
       onCreated={({ gl }) => {
         gl.toneMapping = ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.2;
+        gl.toneMappingExposure = view === 'exhibit' ? 1.02 : 1.2;
       }}
     >
-      {/* Soft shop fill so the shadow side of the black nose still reads. */}
-      <hemisphereLight args={['#d0d4d8', '#161616', 0.65]} />
-      {/* Key, front-left: the vertical streak that turns the cylinder. */}
-      <directionalLight position={[-2.4, 3.2, 4.2]} intensity={3.2} />
-      {/* Weak fill, opposite side. */}
-      <directionalLight position={[3.2, 1.4, 2.2]} intensity={0.55} />
-      {/* Rim from behind, separates black paint from the starfield. */}
-      <directionalLight position={[1.8, 2, -3.6]} intensity={1.1} />
+      {view === 'exhibit' ? <ExhibitRig /> : <FlybyLights />}
       <Suspense fallback={null}>
         <Rocket poseRef={poseRef} view={view} />
       </Suspense>

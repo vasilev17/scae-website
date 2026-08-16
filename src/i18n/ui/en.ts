@@ -32,6 +32,7 @@ export const en = {
     seeMore: 'See more',
     outro: 'Ready for launch.',
     commodore: 'Commodore',
+    ourWork: 'Our Work',
     exhibitFx: 'Interactive interior view of the Commodore rocket',
   },
 };

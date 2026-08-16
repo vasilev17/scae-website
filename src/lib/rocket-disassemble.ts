@@ -34,6 +34,21 @@ export function isRocketPartId(name: string): name is RocketPartId {
  */
 const BODY = [0, 0.45, 0] as const;
 
+// Fins + motor (`case`) share the explode clock but cover less ground.
+export const AFT_EXPLODE_SCALE = 0.4;
+
+const AFT_PARTS: ReadonlySet<RocketPartId> = new Set([
+  'fin-neg-x',
+  'fin-pos-x',
+  'fin-pos-z',
+  'fin-neg-z',
+  'case',
+]);
+
+export function explodeTravel(id: RocketPartId, explode: number): number {
+  return AFT_PARTS.has(id) ? explode * AFT_EXPLODE_SCALE : explode;
+}
+
 export const ROCKET_PART_OFFSETS: Record<
   RocketPartId,
   readonly [number, number, number]
@@ -49,3 +64,7 @@ export const ROCKET_PART_OFFSETS: Record<
   case: [0, -1.45, 0],
   nose: [0, 1.15, 0],
 };
+
+// CAD leaves a hairline at the cone/shoulder. Seat the nose onto the bay
+// when assembled. Model metres toward the tail. Lifts off as explode runs.
+export const NOSE_SEAT = 0.003;

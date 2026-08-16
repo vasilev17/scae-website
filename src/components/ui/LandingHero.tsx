@@ -49,6 +49,7 @@ type LandingHeroProps = {
   subtitle: string;
   seeMore: string;
   exhibitName: string;
+  exhibitWork: string;
   exhibitFxLabel: string;
   nav: {
     label: string;
@@ -80,8 +81,23 @@ const INTERIOR_SCALE = 1.75;
 const WARP = { speed: 8, zoom: 2.2 } as const;
 const CRUISE_SPEED = 2;
 
-// Scroll distance the pinned hero consumes.
-const SCROLL_LENGTH = '+=300%';
+// Gate / interior zoom. Keep this duration; SCROLL_LENGTH is sized so
+// this beat still eats the same viewport distance when the fly pose grows.
+const ZOOM_DURATION = 0.7;
+
+// Lift / tilt / roll to the diagonal. Starts near the end of the zoom,
+// then runs past it. No extra roll after it parks.
+const ROCKET_FLY_START = 0.52;
+const ROCKET_FLY_DURATION = 0.4;
+const FLY_POSE_END = ROCKET_FLY_START + ROCKET_FLY_DURATION;
+
+const EXPLODE_DURATION = 0.45;
+// Timeline units after explode starts. 0 = hole with the first crack.
+// Bigger = later hole. 0.12 ≈ parts already a little apart.
+const DISSOLVE_DELAY = 0.075;
+
+// Pin length: zoom keeps ~146% viewport. Extra tail is the dissolve lag.
+const SCROLL_LENGTH = '+=311%';
 
 // Full viewport drop: panes travel off-screen during the open, so parking
 // behind the bottom pane is not enough. The GLB still loads in that hole.
@@ -103,6 +119,7 @@ export function LandingHero({
   subtitle,
   seeMore,
   exhibitName,
+  exhibitWork,
   exhibitFxLabel,
   nav,
   menu,
@@ -228,18 +245,18 @@ export function LandingHero({
           flyby
             .to(
               '.gate-pane-group',
-              { scale: FLYBY_SCALE, ease: 'none', duration: 0.7 },
+              { scale: FLYBY_SCALE, ease: 'none', duration: ZOOM_DURATION },
               0,
             )
             .to(
               '.hero-interior',
-              { scale: INTERIOR_SCALE, ease: 'none', duration: 0.7 },
+              { scale: INTERIOR_SCALE, ease: 'none', duration: ZOOM_DURATION },
               0,
             )
             .to(
               '.hero-interior',
               { autoAlpha: 0, ease: 'none', duration: 0.18 },
-              0.52,
+              ROCKET_FLY_START,
             )
             .to(
               rocketPose.current,
@@ -249,9 +266,9 @@ export function LandingHero({
                 spin: ROCKET_FLY_SPIN,
                 explode: 0,
                 ease: 'none',
-                duration: 0.18,
+                duration: ROCKET_FLY_DURATION,
               },
-              0.52,
+              ROCKET_FLY_START,
             )
             .to(
               warpRef.current,
@@ -261,18 +278,19 @@ export function LandingHero({
             .to(
               warpRef.current,
               { speed: CRUISE_SPEED, ease: 'power2.out', duration: 0.28 },
-              0.7,
+              ZOOM_DURATION,
             );
 
           if (ROCKET_DISASSEMBLE) {
             flyby.to(
               rocketPose.current,
-              { explode: 1, ease: 'none', duration: 0.45 },
-              0.98,
+              { explode: 1, ease: 'none', duration: EXPLODE_DURATION },
+              FLY_POSE_END,
             );
           }
 
           if (ROCKET_PORTAL) {
+            const dissolveAt = FLY_POSE_END + DISSOLVE_DELAY;
             flyby.set(
               '.rocket-exhibit, .dissolve-overlay',
               { autoAlpha: 0 },
@@ -281,14 +299,14 @@ export function LandingHero({
             flyby.set(
               '.rocket-exhibit, .dissolve-overlay',
               { autoAlpha: 1 },
-              0.98,
+              dissolveAt,
             );
             flyby.to(
               portal.current,
-              { dissolve: 1, ease: 'none', duration: 0.45 },
-              0.98,
+              { dissolve: 1, ease: 'none', duration: EXPLODE_DURATION },
+              dissolveAt,
             );
-            flyby.add(() => setExhibitFx(true), 0.98);
+            flyby.add(() => setExhibitFx(true), dissolveAt);
           }
 
           // When the panes have parked, plus a beat. Everything the gate was
@@ -455,6 +473,7 @@ export function LandingHero({
         <>
           <RocketExhibit
             name={exhibitName}
+            work={exhibitWork}
             fxLabel={exhibitFxLabel}
             fx={exhibitFx}
           />

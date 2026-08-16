@@ -606,7 +606,7 @@
     position: fixed;
     inset: 0;
     z-index: 54;
-    background: #000;
+    background: var(--color-gate-light);
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
@@ -616,6 +616,18 @@
     position: absolute;
     inset: 0;
     z-index: 0;
+  }
+
+  .rocket-exhibit-scene {
+    display: block;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .rocket-exhibit-stage canvas {
+    filter: contrast(0.93) saturate(0.88) brightness(1.03);
   }
 
   .rocket-exhibit-stage {
@@ -644,10 +656,25 @@
     mix-blend-mode: screen;
   }
 
+  .rocket-exhibit-work {
+    position: absolute;
+    top: 9svh;
+    right: 0;
+    left: 0;
+    z-index: 3;
+    font-family: var(--font-display);
+    font-size: clamp(1.6875rem, 6.21svh, 4.05rem);
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
+    filter: drop-shadow(0 0.06em 0.1em rgb(0 0 0 / 0.42))
+      drop-shadow(0 0.02em 0.03em rgb(0 0 0 / 0.28));
+  }
+
   .rocket-exhibit-name {
     position: absolute;
     right: 0;
-    bottom: 5.5svh;
+    bottom: 8.5svh;
     left: 0;
     z-index: 3;
     font-family: var(--font-display);
@@ -775,7 +802,8 @@
 
   /* Clip on an inline span with clone: a block-level clip paints one gradient
      down the whole box, so only the first line sits in the white stop. */
-  .landing-title > span {
+  .landing-title > span,
+  .rocket-exhibit-work > span {
     color: transparent;
     background-image: linear-gradient(
       to bottom,

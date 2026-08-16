@@ -44,19 +44,45 @@ export const EXHIBIT_HULL_SLENDERNESS = 0.32;
 export const EXHIBIT_XRAY_HIT_PAD = 6;
 
 // Horizontal exhibit fills this fraction of the viewport width.
-export const EXHIBIT_FILL = 0.75;
-
-// Internals PNG size and nudge. Independent of the 3D rocket so the
-// blueprint can be lined up without moving the model.
-// FILL = width as a fraction of the viewport (0.55 = 55% wide).
-// X / Y = extra shift as a fraction of viewport; +X is right, +Y is up.
-export const EXHIBIT_XRAY_FILL = 0.525;
-export const EXHIBIT_XRAY_X = -0.04;
-export const EXHIBIT_XRAY_Y = 0.06;
-// Hole radius as a fraction of the shorter viewport side.
-export const EXHIBIT_XRAY_HOLE = 0.15;
+export const EXHIBIT_FILL = 0.88;
 
 // Nudge the exhibit so the name overlay clears the cradles, and so the
 // fin-heavy tail does not pull the silhouette left of centre.
-export const EXHIBIT_X = 0.025;
-export const EXHIBIT_Y = 0.06;
+export const EXHIBIT_X = 0.0125;
+export const EXHIBIT_Y = 0.0125;
+
+// Internals ride the 3D rocket. SCALE = PNG width / rocket length.
+// NUDGE = PNG centre minus rocket centre, in rocket-lengths.
+// +X right, +Y up. Frozen from the lined-up pose (FILL 0.88).
+export const EXHIBIT_XRAY_SCALE = 0.7;
+export const EXHIBIT_XRAY_NUDGE_X = -0.0725 / 0.88;
+export const EXHIBIT_XRAY_NUDGE_Y = 0;
+
+// Hole radius as a fraction of the shorter viewport side.
+export const EXHIBIT_XRAY_HOLE = 0.15;
+
+export type ExhibitXrayBox = {
+  imgW: number;
+  imgH: number;
+  imgX: number;
+  imgY: number;
+};
+
+/** Screen box for the internals PNG, locked to the exhibit rocket. */
+export function exhibitXrayBox(
+  viewW: number,
+  viewH: number,
+  plateAspect: number,
+): ExhibitXrayBox {
+  const rocketW = viewW * EXHIBIT_FILL;
+  const rocketCx = viewW * 0.5 + EXHIBIT_X * viewW;
+  const rocketCy = viewH * 0.5 - EXHIBIT_Y * viewH;
+  const imgW = rocketW * EXHIBIT_XRAY_SCALE;
+  const imgH = imgW * plateAspect;
+  return {
+    imgW,
+    imgH,
+    imgX: rocketCx - imgW * 0.5 + EXHIBIT_XRAY_NUDGE_X * rocketW,
+    imgY: rocketCy - imgH * 0.5 - EXHIBIT_XRAY_NUDGE_Y * rocketW,
+  };
+}

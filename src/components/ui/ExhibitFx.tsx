@@ -13,12 +13,10 @@ import {
   EXHIBIT_FILL,
   EXHIBIT_HULL_SLENDERNESS,
   EXHIBIT_X,
-  EXHIBIT_XRAY_FILL,
   EXHIBIT_XRAY_HIT_PAD,
   EXHIBIT_XRAY_HOLE,
-  EXHIBIT_XRAY_X,
-  EXHIBIT_XRAY_Y,
   EXHIBIT_Y,
+  exhibitXrayBox,
 } from '@/lib/rocket';
 
 /**
@@ -63,15 +61,8 @@ export function ExhibitFx() {
     const dprOf = () => Math.min(window.devicePixelRatio || 1, 2);
 
     const imageBox = (width: number, height: number) => {
-      if (!plate) return null;
-      const imgW = width * EXHIBIT_XRAY_FILL;
-      const imgH = imgW * (plate.height / plate.width);
-      return {
-        imgW,
-        imgH,
-        imgX: width * 0.5 - imgW * 0.5 + EXHIBIT_XRAY_X * width,
-        imgY: height * 0.5 - imgH * 0.5 - EXHIBIT_XRAY_Y * height,
-      };
+      if (!plate || plate.width === 0) return null;
+      return exhibitXrayBox(width, height, plate.height / plate.width);
     };
 
     const hullBox = (width: number, height: number) => {

@@ -372,9 +372,13 @@ function getHitScratch(): HitScratch | null {
   return hitScratch;
 }
 
+// ContactShadows sit around 0.58 opacity. Opaque mesh is 255. Cut
+// between them so the puddle under the rocket does not open the hole.
+const HULL_HIT_ALPHA = 200;
+
 /**
- * True when the exhibit WebGL canvas has opaque pixels under the pointer.
- * Empty starfield stays a miss; fins and the tube still count.
+ * True when the exhibit WebGL canvas has opaque mesh under the pointer.
+ * Starfield and the contact shadow stay a miss; fins and the tube count.
  */
 export function hitRocketSilhouette(
   rocket: HTMLCanvasElement,
@@ -415,7 +419,7 @@ export function hitRocketSilhouette(
   );
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   for (let i = 3; i < pixels.length; i += 4) {
-    if ((pixels[i] ?? 0) > 18) return true;
+    if ((pixels[i] ?? 0) > HULL_HIT_ALPHA) return true;
   }
   return false;
 }

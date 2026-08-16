@@ -34,6 +34,7 @@ export const bg: UiDictionary = {
     seeMore: 'Виж още',
     outro: 'Готови за старт.',
     commodore: 'Commodore',
+    ourWork: 'Нашата работа',
     exhibitFx: 'Интерактивен поглед към вътрешността на ракетата Commodore',
   },
 };
