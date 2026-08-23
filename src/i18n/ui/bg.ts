@@ -35,6 +35,9 @@ export const bg: UiDictionary = {
     outro: 'Готови за старт.',
     commodore: 'Commodore',
     ourWork: 'Нашата работа',
+    sectionView: 'Разрез',
+    missionConcept: 'Мисия и концепция',
+    groundSegment: 'Наземен сегмент',
     exhibitFx: 'Интерактивен поглед към вътрешността на ракетата Commodore',
   },
 };

@@ -37,6 +37,16 @@ export const EXHIBIT_ROCKET_POSE: RocketPose = {
 
 export type RocketView = 'flyby' | 'exhibit';
 
+// 0 = assembled exhibit rocket, 1 = CAD section cut.
+export type SectionState = { cut: number };
+
+export const REST_SECTION: SectionState = { cut: 0 };
+
+// ContactShadows ignore material opacity, so hull and cut each get a map.
+// Main camera enables both. Stands stay on layer 0 and sit in both maps.
+export const EXHIBIT_LAYER_HULL = 1;
+export const EXHIBIT_LAYER_CUT = 2;
+
 // Coarse reject only. Real hit is the WebGL silhouette (body + fins).
 export const EXHIBIT_HULL_SLENDERNESS = 0.32;
 

@@ -6,18 +6,20 @@ import {
   type RefObject,
 } from 'react';
 
-import { type RocketPose, type RocketView } from '@/lib/rocket';
+import { type RocketPose, type RocketView, type SectionState } from '@/lib/rocket';
 
 const RETRY_MS = 400;
 
 type HeroRocketProps = {
   poseRef: RefObject<RocketPose>;
   view?: RocketView;
+  sectionRef?: RefObject<SectionState>;
 };
 
 type RocketSceneComponent = ComponentType<{
   poseRef: RefObject<RocketPose>;
   view?: RocketView;
+  sectionRef?: RefObject<SectionState>;
 }>;
 
 /**
@@ -28,7 +30,11 @@ type RocketSceneComponent = ComponentType<{
  * Vite can 504 the first fetch while it rebundles three.js. One retry covers
  * that window; a real load error still lands in the console.
  */
-export function HeroRocket({ poseRef, view = 'flyby' }: HeroRocketProps) {
+export function HeroRocket({
+  poseRef,
+  view = 'flyby',
+  sectionRef,
+}: HeroRocketProps) {
   const [Scene, setScene] = useState<RocketSceneComponent | null>(null);
 
   useEffect(() => {
@@ -62,7 +68,7 @@ export function HeroRocket({ poseRef, view = 'flyby' }: HeroRocketProps) {
 
   return (
     <Suspense fallback={null}>
-      <Scene poseRef={poseRef} view={view} />
+      <Scene poseRef={poseRef} view={view} sectionRef={sectionRef} />
     </Suspense>
   );
 }

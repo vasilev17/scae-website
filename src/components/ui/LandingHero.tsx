@@ -50,6 +50,9 @@ type LandingHeroProps = {
   seeMore: string;
   exhibitName: string;
   exhibitWork: string;
+  exhibitSection: string;
+  exhibitMission: string;
+  exhibitGround: string;
   exhibitFxLabel: string;
   nav: {
     label: string;
@@ -120,6 +123,9 @@ export function LandingHero({
   seeMore,
   exhibitName,
   exhibitWork,
+  exhibitSection,
+  exhibitMission,
+  exhibitGround,
   exhibitFxLabel,
   nav,
   menu,
@@ -301,6 +307,18 @@ export function LandingHero({
               { autoAlpha: 1 },
               dissolveAt,
             );
+            flyby.fromTo(
+              '.rocket-exhibit-rail--left',
+              { xPercent: -110 },
+              { xPercent: 0, ease: 'power2.out', duration: 0.45 },
+              dissolveAt,
+            );
+            flyby.fromTo(
+              '.rocket-exhibit-rail--right',
+              { xPercent: 110 },
+              { xPercent: 0, ease: 'power2.out', duration: 0.45 },
+              dissolveAt,
+            );
             flyby.to(
               portal.current,
               { dissolve: 1, ease: 'none', duration: EXPLODE_DURATION },
@@ -474,6 +492,9 @@ export function LandingHero({
           <RocketExhibit
             name={exhibitName}
             work={exhibitWork}
+            sectionLabel={exhibitSection}
+            missionLabel={exhibitMission}
+            groundLabel={exhibitGround}
             fxLabel={exhibitFxLabel}
             fx={exhibitFx}
           />

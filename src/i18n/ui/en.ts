@@ -33,6 +33,9 @@ export const en = {
     outro: 'Ready for launch.',
     commodore: 'Commodore',
     ourWork: 'Our Work',
+    sectionView: 'Section view',
+    missionConcept: 'Mission & Concept',
+    groundSegment: 'Ground Segment',
     exhibitFx: 'Interactive interior view of the Commodore rocket',
   },
 };

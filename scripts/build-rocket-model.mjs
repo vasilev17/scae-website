@@ -12,6 +12,10 @@
  * one-blob, join-by-material model. The previous blob is also kept as
  * src/assets/generated/rocket-joined.glb.
  *
+ * The section-view export is joined by material (no explode) and transformed
+ * with the *assembled* orientation matrix so both GLBs share one frame.
+ * The axial stud (`шпилка`) stays its own mesh so exhibit paint can tint it.
+ *
  * Run: node scripts/build-rocket-model.mjs
  */
 
@@ -39,8 +43,13 @@ const SOURCE = path.join(
   root,
   'src/assets/3D-models/assembly - commodore - min.glb',
 );
+const SECTION_SOURCE = path.join(
+  root,
+  'src/assets/3D-models/assembly - commodore - min section view.glb',
+);
 const OUT_DIR = path.join(root, 'src/assets/generated');
 const OUT_FILE = path.join(OUT_DIR, 'rocket.glb');
+const SECTION_OUT_FILE = path.join(OUT_DIR, 'rocket-section.glb');
 
 // false = old join-by-material blob. true = 9 independently movable parts.
 const KEEP_NAMED_PARTS = true;
@@ -49,6 +58,11 @@ const KEEP_NAMED_PARTS = true;
  * Onshape part names → stable ids the scene looks up. Match is on the node
  * name, or a parent "occurrence of …" name that still contains the CAD string.
  */
+// Section internals kept out of the material join so runtime paint can hit them.
+const SECTION_STEEL = {
+  шпилка: 'stud',
+};
+
 const PART_IDS = {
   'перо 1 ново': 'fin-neg-x',
   'перо 2 ново': 'fin-pos-z',
@@ -88,6 +102,24 @@ function partIdFor(name) {
   return null;
 }
 
+function isSectionSteel(name) {
+  return name in SECTION_STEEL;
+}
+
+function renameSectionSteel(document) {
+  for (const node of document.getRoot().listNodes()) {
+    const mesh = node.getMesh();
+    if (!mesh) continue;
+    const id = SECTION_STEEL[node.getName()];
+    if (!id) continue;
+    node.setName(id);
+    mesh.setName(id);
+    for (const prim of mesh.listPrimitives()) {
+      prim.getMaterial()?.setName(id);
+    }
+  }
+}
+
 function renameParts(document) {
   for (const node of document.getRoot().listNodes()) {
     if (!node.getMesh()) continue;
@@ -100,58 +132,126 @@ function renameParts(document) {
   }
 }
 
+function meshBounds(document, needle) {
+  for (const node of document.getRoot().listNodes()) {
+    const mesh = node.getMesh();
+    if (!mesh || !node.getName().includes(needle)) continue;
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      if (!pos) continue;
+      const point = [0, 0, 0];
+      for (let i = 0; i < pos.getCount(); i += 1) {
+        pos.getElement(i, point);
+        for (let k = 0; k < 3; k += 1) {
+          const value = point[k] ?? 0;
+          if (value < min[k]) min[k] = value;
+          if (value > max[k]) max[k] = value;
+        }
+      }
+    }
+    return { min, max };
+  }
+  throw new Error(`Missing part ${JSON.stringify(needle)} for section align`);
+}
+
+function translation(dx, dy, dz) {
+  return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, dx, dy, dz, 1];
+}
+
+// Cut half sits on +Z after orientation (toward the camera). Flip it to
+// -Z so the exhibit looks into the bay, not at the outer skin.
+function faceCamera() {
+  return [-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1];
+}
+
+/**
+ * Section export lives in a shifted Onshape occurrence. Slide it onto the
+ * assembled fuselage in CAD space, using the cut face as the tube axis.
+ */
+function sectionAlign(assembled, section) {
+  const full = meshBounds(assembled, 'фузелаж');
+  const cut = meshBounds(section, 'фузелаж');
+  const axisY = (full.min[1] + full.max[1]) / 2;
+  return translation(
+    full.min[0] - cut.min[0],
+    axisY - cut.max[1],
+    full.min[2] - cut.min[2],
+  );
+}
+
+async function prepare(document, keepNamedParts) {
+  await document.transform(flatten());
+  for (const node of document.getRoot().listNodes()) clearNodeTransform(node);
+  await document.transform(
+    dedup(),
+    keepNamedParts ? join({ keepMeshes: true }) : join(),
+    weld(),
+    prune(),
+    unpartition(),
+  );
+}
+
+function applyFrame(document, matrix) {
+  for (const mesh of document.getRoot().listMeshes()) {
+    transformMesh(mesh, matrix);
+  }
+  for (const material of document.getRoot().listMaterials()) {
+    material.setDoubleSided(true);
+  }
+}
+
+async function compressWrite(io, document, outFile) {
+  await document.transform(meshopt({ encoder: MeshoptEncoder, level: 'high' }));
+  await io.write(outFile, document);
+  const primitives = document
+    .getRoot()
+    .listMeshes()
+    .reduce((total, mesh) => total + mesh.listPrimitives().length, 0);
+  const scene = document.getRoot().getDefaultScene();
+  const bounds = getBounds(scene);
+  const { size } = await stat(outFile);
+  const names = document
+    .getRoot()
+    .listNodes()
+    .filter((node) => node.getMesh())
+    .map((node) => node.getName());
+  console.log(`${path.basename(outFile)}: ${(size / 1024).toFixed(1)} KB`);
+  console.log(`primitives: ${primitives}`);
+  console.log(`parts: ${names.join(', ')}`);
+  console.log(`bounds: ${JSON.stringify(bounds)}`);
+}
+
 async function main() {
   await MeshoptEncoder.ready;
 
   const io = new NodeIO()
     .registerExtensions(ALL_EXTENSIONS)
     .registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
-  const document = await io.read(SOURCE);
-  const scene = document.getRoot().getDefaultScene();
 
-  await document.transform(flatten());
-  for (const node of document.getRoot().listNodes()) clearNodeTransform(node);
-  await document.transform(
-    dedup(),
-    KEEP_NAMED_PARTS ? join({ keepMeshes: true }) : join(),
-    weld(),
+  const assembled = await io.read(SOURCE);
+  await prepare(assembled, KEEP_NAMED_PARTS);
+
+  const section = await io.read(SECTION_SOURCE);
+  await prepare(section, true);
+
+  const align = sectionAlign(assembled, section);
+  const matrix = orientation(getBounds(assembled.getRoot().getDefaultScene()));
+  if (KEEP_NAMED_PARTS) renameParts(assembled);
+  applyFrame(assembled, matrix);
+  applyFrame(section, align);
+  applyFrame(section, matrix);
+  applyFrame(section, faceCamera());
+  await section.transform(
+    join({ filter: (node) => !isSectionSteel(node.getName()) }),
     prune(),
-    unpartition(),
   );
-
-  if (KEEP_NAMED_PARTS) renameParts(document);
-
-  const matrix = orientation(getBounds(scene));
-  for (const mesh of document.getRoot().listMeshes()) {
-    transformMesh(mesh, matrix);
-  }
-
-  // Onshape windings are unreliable. Keep both sides so a flipped face
-  // cannot eat the nose or a fin.
-  for (const material of document.getRoot().listMaterials()) {
-    material.setDoubleSided(true);
-  }
-
-  await document.transform(meshopt({ encoder: MeshoptEncoder, level: 'high' }));
+  renameSectionSteel(section);
 
   await mkdir(OUT_DIR, { recursive: true });
-  await io.write(OUT_FILE, document);
-
-  const primitives = document
-    .getRoot()
-    .listMeshes()
-    .reduce((total, mesh) => total + mesh.listPrimitives().length, 0);
-  const bounds = getBounds(scene);
-  const { size } = await stat(OUT_FILE);
-  const names = document
-    .getRoot()
-    .listNodes()
-    .filter((node) => node.getMesh())
-    .map((node) => node.getName());
-  console.log(`rocket.glb: ${(size / 1024).toFixed(1)} KB`);
-  console.log(`primitives: ${primitives}`);
-  console.log(`parts: ${names.join(', ')}`);
-  console.log(`bounds: ${JSON.stringify(bounds)}`);
+  await compressWrite(io, assembled, OUT_FILE);
+  await compressWrite(io, section, SECTION_OUT_FILE);
 }
 
 await main();
