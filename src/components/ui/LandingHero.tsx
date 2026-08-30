@@ -98,6 +98,11 @@ const EXPLODE_DURATION = 0.45;
 // Timeline units after explode starts. 0 = hole with the first crack.
 // Bigger = later hole. 0.12 ≈ parts already a little apart.
 const DISSOLVE_DELAY = 0.075;
+// Rails start once the hole has begun. Rays wait — their bloom sits at
+// the top, still covered if they share the rail lag.
+const RAIL_SLIDE_LAG = 0.18;
+const RAY_SLIDE_LAG = 0.58;
+const RAIL_SLIDE_DURATION = 0.45;
 
 // Pin length: zoom keeps ~146% viewport. Extra tail is the dissolve lag.
 const SCROLL_LENGTH = '+=311%';
@@ -297,6 +302,24 @@ export function LandingHero({
 
           if (ROCKET_PORTAL) {
             const dissolveAt = FLY_POSE_END + DISSOLVE_DELAY;
+            const railsAt = dissolveAt + EXPLODE_DURATION * RAIL_SLIDE_LAG;
+            const raysAt = dissolveAt + EXPLODE_DURATION * RAY_SLIDE_LAG;
+            const leftRail = '.rocket-exhibit-rail--left';
+            const rightRail = '.rocket-exhibit-rail--right';
+            const rays = '.rocket-exhibit-ray';
+            const rayOff = {
+              opacity: 0,
+              xPercent: -72,
+              yPercent: -62,
+              scale: 0.5,
+            };
+            const rayOn = {
+              opacity: 1,
+              xPercent: -50,
+              yPercent: -40,
+              scale: 1,
+            };
+
             flyby.set(
               '.rocket-exhibit, .dissolve-overlay',
               { autoAlpha: 0 },
@@ -307,17 +330,41 @@ export function LandingHero({
               { autoAlpha: 1 },
               dissolveAt,
             );
+            flyby.set(leftRail, { xPercent: 0, x: '-100vw' }, 0);
+            flyby.set(rightRail, { xPercent: 0, x: '100vw' }, 0);
+            flyby.set(rays, rayOff, 0);
             flyby.fromTo(
-              '.rocket-exhibit-rail--left',
-              { xPercent: -110 },
-              { xPercent: 0, ease: 'power2.out', duration: 0.45 },
-              dissolveAt,
+              leftRail,
+              { xPercent: 0, x: '-100vw' },
+              {
+                xPercent: 0,
+                x: 0,
+                ease: 'power2.out',
+                duration: RAIL_SLIDE_DURATION,
+              },
+              railsAt,
             );
             flyby.fromTo(
-              '.rocket-exhibit-rail--right',
-              { xPercent: 110 },
-              { xPercent: 0, ease: 'power2.out', duration: 0.45 },
-              dissolveAt,
+              rightRail,
+              { xPercent: 0, x: '100vw' },
+              {
+                xPercent: 0,
+                x: 0,
+                ease: 'power2.out',
+                duration: RAIL_SLIDE_DURATION,
+              },
+              railsAt,
+            );
+            flyby.fromTo(
+              rays,
+              rayOff,
+              {
+                ...rayOn,
+                ease: 'power2.out',
+                duration: RAIL_SLIDE_DURATION,
+                immediateRender: false,
+              },
+              raysAt,
             );
             flyby.to(
               portal.current,

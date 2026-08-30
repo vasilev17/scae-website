@@ -15,7 +15,9 @@ import {
   EXHIBIT_X,
   EXHIBIT_XRAY_HIT_PAD,
   EXHIBIT_XRAY_HOLE,
-  EXHIBIT_Y,
+  EXHIBIT_STANDS,
+  exhibitFloat,
+  exhibitRocketY,
   exhibitXrayBox,
 } from '@/lib/rocket';
 
@@ -70,7 +72,7 @@ export function ExhibitFx() {
       const hullH = hullW * EXHIBIT_HULL_SLENDERNESS;
       return {
         x: width * 0.5 - hullW * 0.5 + EXHIBIT_X * width,
-        y: height * 0.5 - hullH * 0.5 - EXHIBIT_Y * height,
+        y: height * 0.5 - hullH * 0.5 - exhibitRocketY() * height,
         w: hullW,
         h: hullH,
       };
@@ -142,6 +144,9 @@ export function ExhibitFx() {
         imgY: layout.imgY,
         imgW: layout.imgW,
         imgH: layout.imgH,
+        rocketCx: layout.rocketCx,
+        rocketCy: layout.rocketCy,
+        pitch: exhibitFloat.pitch,
         rocket: stageCanvas(),
         tint,
       });
@@ -157,7 +162,8 @@ export function ExhibitFx() {
       open += (want - open) * (1 - Math.exp(-dt / tau));
       if (Math.abs(want - open) < 0.003) open = want;
       paint();
-      if (open !== want) raf = requestAnimationFrame(tick);
+      const followFloat = !EXHIBIT_STANDS && !reduce && open > 0;
+      if (open !== want || followFloat) raf = requestAnimationFrame(tick);
       else lastTick = 0;
     };
 
@@ -212,14 +218,14 @@ export function ExhibitFx() {
 
     const onResize = () => paint();
 
-    root.addEventListener('pointermove', move);
-    root.addEventListener('pointerleave', leave);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerleave', leave);
     window.addEventListener('resize', onResize);
     return () => {
       dead = true;
       if (raf) cancelAnimationFrame(raf);
-      root.removeEventListener('pointermove', move);
-      root.removeEventListener('pointerleave', leave);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerleave', leave);
       window.removeEventListener('resize', onResize);
     };
   }, []);

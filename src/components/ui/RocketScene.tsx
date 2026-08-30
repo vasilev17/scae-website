@@ -12,6 +12,7 @@ import {
   ACESFilmicToneMapping,
   Box3,
   Group,
+  Light,
   Mesh,
   MeshBasicMaterial,
   Object3D,
@@ -27,8 +28,14 @@ import { ROCKET_MARK_ENABLED, RocketMark } from '@/components/ui/RocketMark';
 import { RocketStands, STAND_HEIGHT } from '@/components/ui/RocketStand';
 import {
   EXHIBIT_FILL,
+  EXHIBIT_FLOAT_AMP,
+  EXHIBIT_FLOAT_PERIOD,
+  EXHIBIT_FLOAT_PITCH,
+  exhibitFloat,
   EXHIBIT_LAYER_CUT,
   EXHIBIT_LAYER_HULL,
+  EXHIBIT_SHADOWS,
+  EXHIBIT_STANDS,
   EXHIBIT_X,
   EXHIBIT_Y,
   REST_SECTION,
@@ -57,16 +64,22 @@ function withMeshopt(loader: GLTFLoader) {
 const FOV = 30;
 const CAMERA_DISTANCE = 4;
 
-const SHADOW_OPACITY = 0.58;
+const SHADOW_OPACITY = 0.62;
 const SHADOW_BLUR = 2.6;
 const SHADOW_SCALE = 2.6;
 const SHADOW_FAR = 0.55;
-const SHADOW_COLOR = '#1a1210';
+const SHADOW_COLOR = '#0b0c10';
 
 function assignLayer(object: Object3D, layer: number) {
   object.traverse((child) => {
     child.layers.set(layer);
   });
+}
+
+function bindCutLight(light: Light | null) {
+  if (!light) return;
+  light.layers.disableAll();
+  light.layers.enable(EXHIBIT_LAYER_CUT);
 }
 
 function setShadowOpacity(group: Group | null, opacity: number) {
@@ -139,51 +152,64 @@ function FlybyLights() {
 function ExhibitRig() {
   return (
     <>
-      <ambientLight intensity={0.4} color="#fff4e4" />
-      <hemisphereLight args={['#fff7ee', '#6e685c', 0.72]} />
-      {/* Tent roof: big overhead softbox. */}
+      <ambientLight intensity={0.2} color="#a8b4c4" />
+      <hemisphereLight args={['#c4d0dc', '#1a1c24', 0.48]} />
+      {/* Key: same side as the white 2D ray. */}
       <directionalLight
-        position={[0.4, 4.6, 1.8]}
-        intensity={1.15}
-        color="#fffaf3"
+        position={[-2.4, 3.6, 2.6]}
+        intensity={2.15}
+        color="#f4f7fb"
       />
-      {/* Bright rear wall, wrap light from behind. */}
+      {/* Cool rim: lifts black nose and fins off the void. */}
       <directionalLight
-        position={[0.2, 1.4, -3.4]}
-        intensity={0.55}
-        color="#ffffff"
+        position={[3.4, 2.4, -1.6]}
+        intensity={0.95}
+        color="#7eb6f5"
       />
-      {/* Weak warm fill from the open front. */}
+      {/* Tight top kick so the orange band still turns. */}
       <directionalLight
-        position={[-2.2, 1.8, 2.8]}
-        intensity={0.28}
-        color="#ffe8c8"
+        position={[0.15, 5.4, 0.4]}
+        intensity={0.72}
+        color="#e4ecf4"
       />
-      <Environment resolution={256} environmentIntensity={0.55}>
+      {/* Under-fill: keep the belly from falling into the grid. */}
+      <directionalLight
+        position={[0.3, -1.6, 2.4]}
+        intensity={0.46}
+        color="#9aabbe"
+      />
+      {/* Section cut only. Quieter than the full rig dump. */}
+      <directionalLight
+        ref={bindCutLight}
+        position={[-2.4, 3.6, 2.6]}
+        intensity={0.40}
+        color="#f4f7fb"
+      />
+      <directionalLight
+        ref={bindCutLight}
+        position={[-2.8, 0.2, 4.4]}
+        intensity={0.15}
+        color="#e8eef6"
+      />
+      <Environment resolution={256} environmentIntensity={0.34}>
         <Lightformer
-          intensity={5}
+          intensity={3.2}
           rotation-x={Math.PI / 2}
           position={[0, 5, 0]}
-          scale={[12, 12, 1]}
-          color="#fff8ee"
+          scale={[8, 8, 1]}
+          color="#d8e4f2"
         />
         <Lightformer
-          intensity={2.4}
-          position={[0, 1, -5]}
-          scale={[14, 8, 1]}
-          color="#ffffff"
-        />
-        <Lightformer
-          intensity={0.9}
-          position={[-5, 1.2, 1]}
-          scale={[4, 6, 1]}
-          color="#fff1d6"
-        />
-        <Lightformer
-          intensity={0.55}
-          position={[5, 1.2, 2]}
+          intensity={1.6}
+          position={[-4, 2.4, 2]}
           scale={[3, 5, 1]}
-          color="#e4e0d6"
+          color="#f5f8fc"
+        />
+        <Lightformer
+          intensity={1.1}
+          position={[4.5, 1.6, -1]}
+          scale={[2.5, 4, 1]}
+          color="#60a5fa"
         />
       </Environment>
     </>
@@ -219,6 +245,7 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
   const markGroupRef = useRef<Group>(null);
   const hullShadowRef = useRef<Group>(null);
   const cutShadowRef = useRef<Group>(null);
+  const floatRef = useRef<Group>(null);
 
   const { model, height, materials, parts } = useMemo(() => {
     const model = gltf.scene.clone(true);
@@ -268,8 +295,21 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
     // sits at NOSE_TIP; lift 1 puts it on the viewport origin.
     const restY = -viewport.height * NOSE_TIP;
     if (view === 'exhibit') {
+      if (!EXHIBIT_STANDS) {
+        const phase =
+          (performance.now() / 1000 / EXHIBIT_FLOAT_PERIOD) * Math.PI * 2;
+        exhibitFloat.y = Math.sin(phase) * EXHIBIT_FLOAT_AMP;
+        exhibitFloat.pitch = Math.cos(phase) * EXHIBIT_FLOAT_PITCH;
+      } else {
+        exhibitFloat.y = 0;
+        exhibitFloat.pitch = 0;
+      }
       group.position.x = viewport.width * EXHIBIT_X;
-      group.position.y = viewport.height * EXHIBIT_Y;
+      group.position.y =
+        viewport.height * EXHIBIT_Y + exhibitFloat.y * viewport.height;
+      if (floatRef.current) {
+        floatRef.current.rotation.z = exhibitFloat.pitch;
+      }
     } else {
       group.position.x = 0;
       group.position.y = restY * (1 - lift);
@@ -299,8 +339,10 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
     if (view === 'exhibit') {
       setCutOpacity(materials, 1 - cut, cut < 0.5);
       if (assembledRef.current) assembledRef.current.visible = cut < 0.999;
-      setShadowOpacity(hullShadowRef.current, SHADOW_OPACITY * (1 - cut));
-      setShadowOpacity(cutShadowRef.current, SHADOW_OPACITY * cut);
+      if (EXHIBIT_SHADOWS) {
+        setShadowOpacity(hullShadowRef.current, SHADOW_OPACITY * (1 - cut));
+        setShadowOpacity(cutShadowRef.current, SHADOW_OPACITY * cut);
+      }
     }
   });
 
@@ -313,6 +355,7 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
 
   return (
     <group ref={groupRef} scale={scale}>
+      <group ref={floatRef}>
       <group ref={tiltRef}>
         <group ref={bodyRef} position={[0, -height / 2, 0]}>
           <group ref={assembledRef}>
@@ -335,8 +378,11 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
           ) : null}
         </group>
       </group>
-      {view === 'exhibit' ? <RocketStands length={height} /> : null}
-      {view === 'exhibit' ? (
+      </group>
+      {view === 'exhibit' && EXHIBIT_STANDS ? (
+        <RocketStands length={height} />
+      ) : null}
+      {view === 'exhibit' && EXHIBIT_SHADOWS ? (
         <>
           <ExhibitShadow
             shadowRef={hullShadowRef}
@@ -367,6 +413,7 @@ export function RocketScene({
   return (
     <Canvas
       className="h-full w-full"
+      style={{ pointerEvents: 'none' }}
       frameloop="always"
       dpr={[1, 2]}
       gl={{
@@ -377,7 +424,7 @@ export function RocketScene({
       camera={{ fov: FOV, position: [0, 0, CAMERA_DISTANCE] }}
       onCreated={({ gl, camera }) => {
         gl.toneMapping = ACESFilmicToneMapping;
-        gl.toneMappingExposure = view === 'exhibit' ? 1.02 : 1.2;
+        gl.toneMappingExposure = view === 'exhibit' ? 1.0 : 1.2;
         camera.layers.enable(EXHIBIT_LAYER_HULL);
         camera.layers.enable(EXHIBIT_LAYER_CUT);
       }}

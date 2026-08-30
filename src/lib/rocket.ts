@@ -61,6 +61,21 @@ export const EXHIBIT_FILL = 0.88;
 export const EXHIBIT_X = 0.0125;
 export const EXHIBIT_Y = 0.0125;
 
+// Temporary exhibit test: hide cradles and bob the airframe.
+export const EXHIBIT_STANDS = false;
+// Temporary: hide ContactShadows under the rocket. Flip true to restore.
+export const EXHIBIT_SHADOWS = false;
+export const EXHIBIT_FLOAT_AMP = 0.012;
+export const EXHIBIT_FLOAT_PERIOD = 5;
+// Extra tilt (radians). Velocity of the bob, so the nose leads.
+export const EXHIBIT_FLOAT_PITCH = 0.010;
+
+export const exhibitFloat = { y: 0, pitch: 0 };
+
+export function exhibitRocketY() {
+  return EXHIBIT_Y + exhibitFloat.y;
+}
+
 // Internals ride the 3D rocket. SCALE = PNG width / rocket length.
 // NUDGE = PNG centre minus rocket centre, in rocket-lengths.
 // +X right, +Y up. Frozen from the lined-up pose (FILL 0.88).
@@ -76,6 +91,8 @@ export type ExhibitXrayBox = {
   imgH: number;
   imgX: number;
   imgY: number;
+  rocketCx: number;
+  rocketCy: number;
 };
 
 /** Screen box for the internals PNG, locked to the exhibit rocket. */
@@ -86,7 +103,7 @@ export function exhibitXrayBox(
 ): ExhibitXrayBox {
   const rocketW = viewW * EXHIBIT_FILL;
   const rocketCx = viewW * 0.5 + EXHIBIT_X * viewW;
-  const rocketCy = viewH * 0.5 - EXHIBIT_Y * viewH;
+  const rocketCy = viewH * 0.5 - exhibitRocketY() * viewH;
   const imgW = rocketW * EXHIBIT_XRAY_SCALE;
   const imgH = imgW * plateAspect;
   return {
@@ -94,5 +111,7 @@ export function exhibitXrayBox(
     imgH,
     imgX: rocketCx - imgW * 0.5 + EXHIBIT_XRAY_NUDGE_X * rocketW,
     imgY: rocketCy - imgH * 0.5 - EXHIBIT_XRAY_NUDGE_Y * rocketW,
+    rocketCx,
+    rocketCy,
   };
 }

@@ -54,7 +54,7 @@ export function RocketStands({ length }: RocketStandsProps) {
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: '#c8c4ba',
+        color: '#8d9199',
         roughness: 0.88,
         metalness: 0,
       }),

@@ -3,6 +3,15 @@
  * pixelated noisy hole that follows the pointer.
  */
 
+import {
+  EXHIBIT_FILL,
+  EXHIBIT_HULL_SLENDERNESS,
+  EXHIBIT_X,
+  EXHIBIT_XRAY_HIT_PAD,
+  exhibitFloat,
+  exhibitRocketY,
+} from '@/lib/rocket';
+
 export const XRAY_CELL = 12;
 
 function hash2(x: number, y: number): number {
@@ -201,6 +210,9 @@ export type XrayPaint = {
   imgY: number;
   imgW: number;
   imgH: number;
+  rocketCx?: number;
+  rocketCy?: number;
+  pitch?: number;
   rocket: HTMLCanvasElement | null;
   tint: Rgb;
 };
@@ -348,7 +360,19 @@ export function paintXrayHole(frame: XrayPaint): void {
       span * 2,
     );
   }
-  ctx.drawImage(frame.plate, frame.imgX, frame.imgY, frame.imgW, frame.imgH);
+  const originX = frame.rocketCx ?? frame.imgX + frame.imgW / 2;
+  const originY = frame.rocketCy ?? frame.imgY + frame.imgH / 2;
+  ctx.save();
+  ctx.translate(originX, originY);
+  ctx.rotate(-(frame.pitch ?? 0));
+  ctx.drawImage(
+    frame.plate,
+    frame.imgX - originX,
+    frame.imgY - originY,
+    frame.imgW,
+    frame.imgH,
+  );
+  ctx.restore();
   stampHullEdges(ctx, frame);
   ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
@@ -422,6 +446,32 @@ export function hitRocketSilhouette(
     if ((pixels[i] ?? 0) > HULL_HIT_ALPHA) return true;
   }
   return false;
+}
+
+/** True when the pointer sits on exhibit mesh, not empty WebGL pixels. */
+export function pointerOverRocketMesh(
+  rocket: HTMLCanvasElement | null,
+  cssX: number,
+  cssY: number,
+  cssW: number,
+  cssH: number,
+): boolean {
+  if (!rocket || cssW <= 0 || cssH <= 0) return false;
+  const hullW = cssW * EXHIBIT_FILL;
+  const hullH = hullW * EXHIBIT_HULL_SLENDERNESS;
+  const x = cssW * 0.5 - hullW * 0.5 + EXHIBIT_X * cssW;
+  const y = cssH * 0.5 - hullH * 0.5 - exhibitRocketY() * cssH;
+  if (cssX < x || cssX > x + hullW || cssY < y || cssY > y + hullH) {
+    return false;
+  }
+  return hitRocketSilhouette(
+    rocket,
+    cssX,
+    cssY,
+    cssW,
+    cssH,
+    EXHIBIT_XRAY_HIT_PAD,
+  );
 }
 
 export function syncCanvasSize(

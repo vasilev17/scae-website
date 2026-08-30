@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import 'lenis/dist/lenis.css';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Subset from the licensed TTFs by scripts/build-fonts.py (Latin + Cyrillic). */
 @font-face {
   font-family: 'Plateia';
@@ -46,6 +48,47 @@
   --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Plateia', var(--font-sans);
   --font-mono: 'Disket Mono', ui-monospace, monospace;
+
+  --color-neutral-100: #f4f4f5;
+  --color-neutral-300: #d4d4d8;
+  --color-neutral-500: #71717a;
+  --color-neutral-700: #3f3f46;
+  --color-neutral-800: #27272a;
+  --color-neutral-900: #18181b;
+}
+
+/* Inline so --duration / --delay resolve on the cell, not :root. */
+@theme inline {
+  --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1
+    var(--delay, 0ms);
+  --animate-spotlight: spotlight 2s ease 0s 1 forwards;
+
+  @keyframes cell-ripple {
+    0% {
+      opacity: 0.4;
+    }
+
+    50% {
+      opacity: 0.8;
+    }
+
+    100% {
+      opacity: 0.4;
+    }
+  }
+}
+
+/* Outside @theme so exhibit CSS can name this. Utility layer must not own it. */
+@keyframes spotlight {
+  0% {
+    opacity: 0;
+    transform: translate(-72%, -62%) scale(0.5);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(1);
+  }
 }
 
 @layer base {
@@ -606,7 +649,7 @@
     position: fixed;
     inset: 0;
     z-index: 54;
-    background: var(--color-gate-light);
+    background: var(--color-background);
     pointer-events: none;
     overflow: hidden;
     opacity: 0;
@@ -617,18 +660,85 @@
     position: absolute;
     inset: 0;
     z-index: 0;
+    pointer-events: none;
+    --cell-border-color: var(--color-neutral-700);
+    --cell-fill-color: var(--color-neutral-900);
+    --cell-shadow-color: var(--color-neutral-800);
+    -webkit-mask-image: radial-gradient(
+        ellipse 100% 78% at 50% 48%,
+        #fff 32%,
+        transparent 88%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        #fff 8%,
+        #fff 88%,
+        transparent 100%
+      );
+    -webkit-mask-composite: source-in;
+    mask-image: radial-gradient(
+        ellipse 100% 78% at 50% 48%,
+        #fff 32%,
+        transparent 88%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        #fff 8%,
+        #fff 88%,
+        transparent 100%
+      );
+    mask-composite: intersect;
   }
 
-  .rocket-exhibit-scene {
-    display: block;
-    height: 100%;
-    width: 100%;
-    object-fit: cover;
-    object-position: center;
+  .rocket-exhibit-ripple-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: auto;
+  }
+
+  .rocket-exhibit-space .cell.animate-cell-ripple {
+    transition: none;
+    animation-name: cell-ripple;
+    animation-duration: var(--duration, 200ms);
+    animation-timing-function: ease-out;
+    animation-delay: var(--delay, 0ms);
+    animation-iteration-count: 1;
+    animation-fill-mode: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rocket-exhibit-space .cell.animate-cell-ripple {
+      animation: none;
+    }
   }
 
   .rocket-exhibit-stage canvas {
-    filter: contrast(0.93) saturate(0.88) brightness(1.03);
+    filter: contrast(1.03) saturate(0.96) brightness(1.02);
+  }
+
+  .rocket-exhibit-stage,
+  .rocket-exhibit-stage * {
+    pointer-events: none !important;
+  }
+
+  .rocket-exhibit-spotlights {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  .rocket-exhibit-spotlight-mirror {
+    position: absolute;
+    inset: 0;
+    transform: scaleX(-1);
+    pointer-events: none;
+    opacity: 0.7;
   }
 
   .rocket-exhibit-stage {
@@ -646,7 +756,7 @@
     position: absolute;
     inset: 0;
     z-index: 2;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .rocket-exhibit-xray-canvas {
@@ -704,22 +814,32 @@
   }
 
   .rocket-exhibit-caption {
+    --exhibit-name-size: clamp(1.25rem, 4.2svh, 2.75rem);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.9em;
+    gap: 0.9svw;
     pointer-events: auto;
   }
 
   .rocket-exhibit-name {
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(1.25rem, 4.2svh, 2.75rem);
-    line-height: 1.1;
+    font-size: var(--exhibit-name-size);
+    line-height: 1;
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-flag-white);
+  }
+
+  /* Title font, not the button font. 1em/1cap must be Plateia's. */
+  .rocket-exhibit-cut-slot {
+    display: flex;
+    align-items: center;
+    font-family: var(--font-display);
+    font-size: var(--exhibit-name-size);
+    padding-top: calc((1em - 1cap) / 2);
   }
 
   .rocket-exhibit-hud-btn {
@@ -791,7 +911,7 @@
     }
 
     .rocket-exhibit-caption {
-      gap: 0.55em;
+      gap: 0.55svw;
     }
   }
 
@@ -998,5 +1118,18 @@
       animation: none;
       fill: var(--color-background);
     }
+  }
+}
+
+/* GSAP scrubs these. CSS only parks the rest pose. */
+.rocket-exhibit-ray {
+  opacity: 0;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rocket-exhibit-ray {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(1);
   }
 }
