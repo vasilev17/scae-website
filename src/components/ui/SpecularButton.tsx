@@ -238,12 +238,16 @@ export function SpecularButton({
     fx.appendChild(gl.canvas);
 
     const box = { w: 1, h: 1, radius: 0 };
-    const resize = () => {
-      // Fractional size + explicit center keep the SDF pinned to the exact
-      // CSS border, instead of drifting up to a pixel from offsetWidth rounding.
-      const rect = btn.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+    let dead = false;
+    const resize = (entry?: ResizeObserverEntry) => {
+      if (dead) return;
+      // Layout box only. getBoundingClientRect includes ancestor scale
+      // (gate flyby, intro), which made the SDF stroke a huge stale rect
+      // after reload while the pill itself stayed correct.
+      const size = entry?.contentBoxSize?.[0];
+      const w = size?.inlineSize ?? btn.offsetWidth;
+      const h = size?.blockSize ?? btn.offsetHeight;
+      if (w < 2 || h < 2) return;
       box.w = w;
       box.h = h;
       // The stylesheet owns the corner radius, so read it back rather than
@@ -253,6 +257,8 @@ export function SpecularButton({
         Math.min(w, h) / 2,
       );
       renderer.setSize(w + PAD * 2, h + PAD * 2);
+      gl.canvas.style.width = '100%';
+      gl.canvas.style.height = '100%';
       program.uniforms.uCenter.value = [
         (PAD + w / 2) * dpr,
         (PAD + h / 2) * dpr,
@@ -332,15 +338,25 @@ export function SpecularButton({
       raf = requestAnimationFrame(update);
     }
 
-    const ro = new ResizeObserver(resize);
+    const ro = new ResizeObserver((entries) => {
+      resize(entries[0]);
+    });
     ro.observe(btn);
     resize();
+    const settle = () => resize();
+    void document.fonts?.ready.then(settle);
+    const late = window.setTimeout(settle, 0);
+    requestAnimationFrame(() => requestAnimationFrame(settle));
     window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('load', settle);
 
     return () => {
+      dead = true;
       if (raf) cancelAnimationFrame(raf);
       ro.disconnect();
+      window.clearTimeout(late);
       window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('load', settle);
       if (gl.canvas.parentNode === fx) fx.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };

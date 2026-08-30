@@ -30,6 +30,11 @@ export const en = {
       'A Bulgarian student-led initiative that brings applied engineering into our education',
     subtitle: "by launching the nation's first modern high-powered rockets.",
     seeMore: 'See more',
+    holdChallengeTitle: 'Our technical challenge:',
+    holdChallengeBody: 'Reach the Kármán line and execute propulsive landing',
+    holdGoalTitle: 'Our goal:',
+    holdGoalBody:
+      'Solve real-life engineering problems to enhance our education',
     outro: 'Ready for launch.',
     commodore: 'Commodore',
     ourWork: 'Our Work',

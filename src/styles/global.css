@@ -274,8 +274,10 @@
      radius set here back into its shader. */
   .gate-nav-button {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
+    width: max-content;
     gap: 0.8cqw;
     height: var(--nav-button-height);
     padding-inline: 1.2cqw;
@@ -305,38 +307,47 @@
   }
 
   .gate-nav-brand {
+    --nav-brand-gap: calc(var(--nav-band-height) * 0.065);
+    --nav-flag-gap: calc(var(--nav-band-height) * 0.05);
+    --nav-flag-height: calc(var(--nav-band-height) * 0.0405);
+    --nav-logo-size: calc(var(--nav-band-height) * 0.86);
+    --nav-brand-nudge: calc(var(--nav-band-height) * 0.15);
+
     position: absolute;
     left: 50%;
     top: 50%;
+    margin-top: var(--nav-brand-nudge);
     transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
-    gap: calc(var(--nav-band-height) * 0.02);
-    height: calc(var(--nav-band-height) * 0.899);
+    gap: var(--nav-brand-gap);
+    height: calc(var(--nav-band-height) * 0.92);
   }
 
   .gate-nav-logo {
     display: block;
-    height: 100%;
-    width: calc(var(--nav-band-height) * 0.899);
+    height: var(--nav-logo-size);
+    width: var(--nav-logo-size);
     object-fit: contain;
   }
 
   .gate-nav-title {
     width: calc(var(--nav-band-height) * 3.081);
+    padding-bottom: calc(var(--nav-flag-gap) + var(--nav-flag-height));
     font-family: var(--font-display);
     font-size: calc(var(--nav-band-height) * 0.169);
-    line-height: 1.2;
+    line-height: 1.26;
     color: var(--color-flag-white);
   }
 
   .gate-nav-flag {
     position: absolute;
-    inset-inline: 0;
+    right: 0;
     bottom: 0;
+    left: calc(var(--nav-logo-size) + var(--nav-brand-gap));
     display: flex;
-    gap: calc(var(--nav-band-height) * 0.027);
-    height: calc(var(--nav-band-height) * 0.0405);
+    gap: calc(var(--nav-band-height) * 0.03);
+    height: var(--nav-flag-height);
   }
 
   .gate-nav-flag span {
@@ -636,7 +647,7 @@
     z-index: 55;
     pointer-events: none;
     opacity: 0;
-    visibility: hidden;
+    visibility: visible;
   }
 
   .dissolve-overlay canvas {
@@ -653,7 +664,7 @@
     pointer-events: none;
     overflow: hidden;
     opacity: 0;
-    visibility: hidden;
+    visibility: visible;
   }
 
   .rocket-exhibit-space {
@@ -664,11 +675,8 @@
     --cell-border-color: var(--color-neutral-700);
     --cell-fill-color: var(--color-neutral-900);
     --cell-shadow-color: var(--color-neutral-800);
-    -webkit-mask-image: radial-gradient(
-        ellipse 100% 78% at 50% 48%,
-        #fff 32%,
-        transparent 88%
-      ),
+    -webkit-mask-image:
+      radial-gradient(ellipse 100% 78% at 50% 48%, #fff 32%, transparent 88%),
       linear-gradient(
         to bottom,
         transparent 0%,
@@ -677,11 +685,8 @@
         transparent 100%
       );
     -webkit-mask-composite: source-in;
-    mask-image: radial-gradient(
-        ellipse 100% 78% at 50% 48%,
-        #fff 32%,
-        transparent 88%
-      ),
+    mask-image:
+      radial-gradient(ellipse 100% 78% at 50% 48%, #fff 32%, transparent 88%),
       linear-gradient(
         to bottom,
         transparent 0%,
@@ -696,6 +701,10 @@
     position: absolute;
     inset: 0;
     z-index: 2;
+    pointer-events: none;
+  }
+
+  .rocket-exhibit.is-live .rocket-exhibit-ripple-hit {
     pointer-events: auto;
   }
 
@@ -802,6 +811,10 @@
   }
 
   .rocket-exhibit-rail {
+    pointer-events: none;
+  }
+
+  .rocket-exhibit.is-live .rocket-exhibit-rail {
     pointer-events: auto;
   }
 
@@ -819,6 +832,10 @@
     align-items: center;
     justify-content: center;
     gap: 0.9svw;
+    pointer-events: none;
+  }
+
+  .rocket-exhibit.is-live .rocket-exhibit-caption {
     pointer-events: auto;
   }
 
@@ -1032,6 +1049,7 @@
   /* Clip on an inline span with clone: a block-level clip paints one gradient
      down the whole box, so only the first line sits in the white stop. */
   .landing-title > span,
+  .hold-title > span,
   .rocket-exhibit-work > span {
     color: transparent;
     background-image: linear-gradient(
@@ -1056,7 +1074,58 @@
     color: var(--color-subtitle);
   }
 
+  /* Diagonal hold: two space cards. Sibling of the pin, not inside it —
+     pin transform would trap `fixed` under the overlay. z 56 sits above
+     the warmed dissolve overlay (55). Scale origin is the viewport centre. */
+  .hold-copy {
+    position: fixed;
+    inset: 0;
+    z-index: 56;
+    pointer-events: none;
+    opacity: 0;
+    transform-origin: 50% 50%;
+  }
+
+  .hold-block {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6svh;
+    max-width: min(78svw, 28rem);
+  }
+
+  .hold-block--challenge {
+    top: 16svh;
+    left: 5.5svw;
+    text-align: left;
+  }
+
+  .hold-block--goal {
+    right: 5.5svw;
+    bottom: 16svh;
+    text-align: center;
+  }
+
+  .hold-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 3.6svh, 2.4rem);
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+
+  .hold-body {
+    font-family: var(--font-display);
+    font-size: clamp(0.8rem, 2.4svh, 1.45rem);
+    line-height: 1.25;
+    text-transform: uppercase;
+    color: var(--color-flag-white);
+  }
+
   @media (min-width: 64rem) {
+    .hold-block {
+      max-width: min(42svw, 32rem);
+    }
+
     .landing-subtitle {
       max-width: 29.01svw;
     }
@@ -1089,7 +1158,8 @@
     /* Nothing will ever animate the navbar in, so it stays visible. */
     .gate-nav,
     .see-more,
-    .landing-copy {
+    .landing-copy,
+    .hold-copy {
       opacity: 1;
     }
 

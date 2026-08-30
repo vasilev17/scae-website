@@ -1,7 +1,7 @@
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 
 import {
   CircularMenu,
@@ -48,6 +48,10 @@ type LandingHeroProps = {
   headline: string;
   subtitle: string;
   seeMore: string;
+  holdChallengeTitle: string;
+  holdChallengeBody: string;
+  holdGoalTitle: string;
+  holdGoalBody: string;
   exhibitName: string;
   exhibitWork: string;
   exhibitSection: string;
@@ -80,19 +84,43 @@ const FLYBY_SCALE = 2.4;
 // the panes instead of blowing past them.
 const INTERIOR_SCALE = 1.75;
 
-// Warp at the deepest point of the push, then the cruise it eases to.
+// Warp at the deepest point of the push. Hold keeps climbing from there.
 const WARP = { speed: 8, zoom: 2.2 } as const;
-const CRUISE_SPEED = 2;
 
 // Gate / interior zoom. Keep this duration; SCROLL_LENGTH is sized so
 // this beat still eats the same viewport distance when the fly pose grows.
 const ZOOM_DURATION = 0.7;
+
+// See More click. Viewport heights from the pin start. Not the flyby clock —
+// that ratio was collapsing to 1 and dumping into the exhibit.
+// 0.55 ≈ half a screen (panes start to leave). Raise to go further.
+const SEE_MORE_VIEWPORTS = 0.55;
 
 // Lift / tilt / roll to the diagonal. Starts near the end of the zoom,
 // then runs past it. No extra roll after it parks.
 const ROCKET_FLY_START = 0.52;
 const ROCKET_FLY_DURATION = 0.4;
 const FLY_POSE_END = ROCKET_FLY_START + ROCKET_FLY_DURATION;
+
+// Diagonal hold: texts start only once the rocket is parked diagonal.
+// "Further out" is scale, not an earlier clock. Fade in, keep growing,
+// sit readable, fade out as the zoom passes them. Gap before the split.
+// HOLD_IN / HOLD_OUT = opacity clocks. HOLD_VISIBLE = full-opacity grow.
+// HOLD_ZOOM = diagonal-text scale only. Never alias ZOOM_DURATION.
+const HOLD_SCALE_FROM = 0.4;
+const HOLD_IN = 0.3;
+const HOLD_VISIBLE = 0.05;
+const HOLD_OUT = 0.22;
+const HOLD_GAP = 0.1;
+const HOLD_START = FLY_POSE_END;
+const HOLD_OUT_AT = HOLD_START + HOLD_IN + HOLD_VISIBLE;
+const HOLD_END = HOLD_OUT_AT + HOLD_OUT + HOLD_GAP;
+const HOLD_ZOOM = 0.77;
+
+// Pins the flyby clock so hold tweaks cannot compress the title zoom.
+// Sized to this hold window (rays end ≈ 2.576). Title mapping stays
+// 0.7 / lock * scroll ≈ pre-hold 1.28 viewports.
+const FLYBY_LOCK = 2.58;
 
 const EXPLODE_DURATION = 0.45;
 // Timeline units after explode starts. 0 = hole with the first crack.
@@ -104,8 +132,9 @@ const RAIL_SLIDE_LAG = 0.18;
 const RAY_SLIDE_LAG = 0.58;
 const RAIL_SLIDE_DURATION = 0.45;
 
-// Pin length: zoom keeps ~146% viewport. Extra tail is the dissolve lag.
-const SCROLL_LENGTH = '+=311%';
+// Pin length: first-title zoom matches pre-hold (311% at duration 1.706).
+// Lock is 2.58, so 365 * 2.58 / 2 ≈ 471. Hold knobs do not touch this.
+const SCROLL_LENGTH = '+=471%';
 
 // Full viewport drop: panes travel off-screen during the open, so parking
 // behind the bottom pane is not enough. The GLB still loads in that hole.
@@ -126,6 +155,10 @@ export function LandingHero({
   headline,
   subtitle,
   seeMore,
+  holdChallengeTitle,
+  holdChallengeBody,
+  holdGoalTitle,
+  holdGoalBody,
   exhibitName,
   exhibitWork,
   exhibitSection,
@@ -149,6 +182,7 @@ export function LandingHero({
   const [gateShut, setGateShut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [exhibitFx, setExhibitFx] = useState(false);
+  const flybyRef = useRef<gsap.core.Timeline | null>(null);
 
   /**
    * One frame loop for the page: Lenis moves the scroll and ScrollTrigger reads
@@ -221,6 +255,7 @@ export function LandingHero({
             gsap.set('.gate-nav', { autoAlpha: 1 });
             gsap.set('.see-more', { autoAlpha: 1 });
             gsap.set('.landing-copy', { autoAlpha: 1 });
+            gsap.set('.hold-copy', { autoAlpha: 1, scale: 1 });
             gsap.set('.hero-rocket', { yPercent: 0 });
             return;
           }
@@ -229,6 +264,11 @@ export function LandingHero({
           gsap.set(portal.current, { ...REST_PORTAL });
           gsap.set('.landing-copy', { autoAlpha: 0 });
           gsap.set('.see-more', { autoAlpha: 0 });
+          gsap.set('.hold-copy', {
+            autoAlpha: 0,
+            scale: HOLD_SCALE_FROM,
+            transformOrigin: '50% 50%',
+          });
           gsap.set('.hero-rocket', { yPercent: ROCKET_ENTRY });
 
           // Built first so the intro can hand over to it, but held inert until
@@ -242,12 +282,19 @@ export function LandingHero({
               pinSpacing: true,
               scrub: 1,
               onToggle: (self) =>
-                gsap.set('.gate-pane-group, .hero-interior', {
+                gsap.set('.gate-pane-group, .hero-interior, .hold-copy', {
                   willChange: self.isActive ? 'transform' : 'auto',
                 }),
             },
           });
           flyby.scrollTrigger?.disable();
+          flyby.eventCallback('onUpdate', () => {
+            root.querySelector('.rocket-exhibit')?.classList.toggle(
+              'is-live',
+              flyby.time() >= HOLD_OUT_AT + HOLD_OUT,
+            );
+          });
+          flybyRef.current = flyby;
 
           gsap.set('.gate-pane-group', {
             transformOrigin: gateFlybyOrigin(geometry),
@@ -288,20 +335,62 @@ export function LandingHero({
             )
             .to(
               warpRef.current,
-              { speed: CRUISE_SPEED, ease: 'power2.out', duration: 0.28 },
+              {
+                speed: 5.5,
+                zoom: 2.6,
+                ease: 'none',
+                duration: HOLD_START - ZOOM_DURATION,
+              },
               ZOOM_DURATION,
+            )
+            .to(
+              '.hold-copy',
+              {
+                scale: INTERIOR_SCALE,
+                ease: 'none',
+                duration: HOLD_ZOOM,
+              },
+              HOLD_START,
+            )
+            .to(
+              '.hold-copy',
+              {
+                autoAlpha: 1,
+                ease: 'none',
+                duration: HOLD_IN,
+              },
+              HOLD_START,
+            )
+            .to(
+              warpRef.current,
+              {
+                speed: 6.2,
+                zoom: 5.0,
+                ease: 'none',
+                duration: HOLD_END - HOLD_START,
+              },
+              HOLD_START,
+            )
+            .to(
+              '.hold-copy',
+              {
+                autoAlpha: 0,
+                ease: 'none',
+                duration: HOLD_OUT,
+              },
+              HOLD_OUT_AT,
             );
 
           if (ROCKET_DISASSEMBLE) {
             flyby.to(
               rocketPose.current,
               { explode: 1, ease: 'none', duration: EXPLODE_DURATION },
-              FLY_POSE_END,
+              HOLD_END,
             );
           }
 
           if (ROCKET_PORTAL) {
-            const dissolveAt = FLY_POSE_END + DISSOLVE_DELAY;
+            const dissolveAt = HOLD_END + DISSOLVE_DELAY;
             const railsAt = dissolveAt + EXPLODE_DURATION * RAIL_SLIDE_LAG;
             const raysAt = dissolveAt + EXPLODE_DURATION * RAY_SLIDE_LAG;
             const leftRail = '.rocket-exhibit-rail--left';
@@ -320,15 +409,20 @@ export function LandingHero({
               scale: 1,
             };
 
+            // Opacity only — autoAlpha would flip visibility and hitch every
+            // time the playhead crosses this mark. Warm once the panes and
+            // first title are gone (ZOOM_DURATION). Overlay at dissolve 0
+            // still looks like the flyby; hold-copy sits above it (z 56).
+            // Explode / hole then only tween uniforms — no first paint.
             flyby.set(
               '.rocket-exhibit, .dissolve-overlay',
-              { autoAlpha: 0 },
+              { opacity: 0 },
               0,
             );
             flyby.set(
               '.rocket-exhibit, .dissolve-overlay',
-              { autoAlpha: 1 },
-              dissolveAt,
+              { opacity: 1 },
+              ZOOM_DURATION,
             );
             flyby.set(leftRail, { xPercent: 0, x: '-100vw' }, 0);
             flyby.set(rightRail, { xPercent: 0, x: '100vw' }, 0);
@@ -371,8 +465,9 @@ export function LandingHero({
               { dissolve: 1, ease: 'none', duration: EXPLODE_DURATION },
               dissolveAt,
             );
-            flyby.add(() => setExhibitFx(true), dissolveAt);
           }
+
+          flyby.set({}, {}, FLYBY_LOCK);
 
           // When the panes have parked, plus a beat. Everything the gate was
           // hiding arrives together from here.
@@ -385,6 +480,7 @@ export function LandingHero({
             .timeline({
               onComplete: () => {
                 setIntroDone(true);
+                if (ROCKET_PORTAL) setExhibitFx(true);
                 flyby.scrollTrigger?.enable();
                 ScrollTrigger.refresh();
               },
@@ -452,7 +548,10 @@ export function LandingHero({
         },
       );
 
-      return () => media.revert();
+      return () => {
+        flybyRef.current = null;
+        media.revert();
+      };
     },
     { scope: rootRef },
   );
@@ -510,6 +609,21 @@ export function LandingHero({
   // and the scoping and cleanup it adds are the same either way.
   const toggleMenu = () => contextSafe(runToggle)();
 
+  const skipToPanesClear = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const trigger = flybyRef.current?.scrollTrigger;
+    const lenis = getSmoothScroll();
+    if (!trigger) {
+      lenis.scrollTo('#after-hero');
+      return;
+    }
+    trigger.enable();
+    const top = trigger.start + window.innerHeight * SEE_MORE_VIEWPORTS;
+    if (!Number.isFinite(top)) return;
+    lenis.scrollTo(top);
+  };
+
   return (
     <div ref={rootRef}>
       <section
@@ -531,9 +645,27 @@ export function LandingHero({
             </h1>
             <p className="landing-subtitle">{subtitle}</p>
           </div>
-          <SeeMoreCue label={seeMore} href="#after-hero" />
+          <SeeMoreCue
+            label={seeMore}
+            href="#after-hero"
+            onClick={skipToPanesClear}
+          />
         </div>
       </section>
+      <div className="hold-copy">
+        <div className="hold-block hold-block--challenge">
+          <h2 className="hold-title">
+            <span>{holdChallengeTitle}</span>
+          </h2>
+          <p className="hold-body">{holdChallengeBody}</p>
+        </div>
+        <div className="hold-block hold-block--goal">
+          <h2 className="hold-title">
+            <span>{holdGoalTitle}</span>
+          </h2>
+          <p className="hold-body">{holdGoalBody}</p>
+        </div>
+      </div>
       {ROCKET_PORTAL ? (
         <>
           <RocketExhibit
