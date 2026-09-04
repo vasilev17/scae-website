@@ -42,6 +42,22 @@ export const en = {
     missionConcept: 'Mission & Concept',
     groundSegment: 'Ground Segment',
     exhibitFx: 'Interactive interior view of the Commodore rocket',
+    partners: 'Partners',
+    partnersAria: 'Industry and academic partners',
+    aboutClub: 'About the Club',
+    aboutClubBody:
+      'We are students from various schools and universities, pursuing specialization in diverse engineering fields, all united by the idea of getting better at what we love to do. We recognize the importance of practice, an interdisciplinary approach, and teamwork, so we have chosen to use one of the most complex fields, rocket science, as both a challenge and an opportunity for growth.',
+    aboutClubPhotoAlt:
+      'SCAE workspace with a rocket model and simulation stations',
+    partnerAlts: {
+      ansys: 'Ansys',
+      dassault: 'Dassault Systèmes',
+      fluidCodes: 'Fluid Codes',
+      gdb: 'GDB',
+      mator: 'Mator',
+      mp: 'MP',
+      tu: 'Technical University of Sofia',
+    },
   },
 };
 

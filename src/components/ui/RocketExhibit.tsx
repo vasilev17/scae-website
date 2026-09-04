@@ -4,9 +4,15 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { BackgroundRippleEffect } from '@/components/ui/BackgroundRippleEffect';
 import { ExhibitFx } from '@/components/ui/ExhibitFx';
+import { FlickeringGrid } from '@/components/ui/FlickeringGrid';
 import { HeroRocket } from '@/components/ui/HeroRocket';
 import { SpecularButton } from '@/components/ui/SpecularButton';
 import { Spotlight } from '@/components/ui/Spotlight';
+import {
+  PartnersMarquee,
+  type PartnerLogo,
+} from '@/components/ui/PartnersMarquee';
+import { Starfield } from '@/components/ui/Starfield';
 import { EXHIBIT_ROCKET_POSE, REST_SECTION } from '@/lib/rocket';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +24,15 @@ type RocketExhibitProps = {
   groundLabel: string;
   fxLabel: string;
   fx: boolean;
+  partnersTitle: string;
+  partnersAria: string;
+  partnerLogos: PartnerLogo[];
+  aboutTitle: string;
+  aboutBody: string;
+  aboutPhotoSrc: string;
+  aboutPhotoAlt: string;
+  aboutPhotoWidth: number;
+  aboutPhotoHeight: number;
 };
 
 type ExhibitHudButtonProps = {
@@ -60,6 +75,15 @@ export function RocketExhibit({
   groundLabel,
   fxLabel,
   fx,
+  partnersTitle,
+  partnersAria,
+  partnerLogos,
+  aboutTitle,
+  aboutBody,
+  aboutPhotoSrc,
+  aboutPhotoAlt,
+  aboutPhotoWidth,
+  aboutPhotoHeight,
 }: RocketExhibitProps) {
   const poseRef = useRef({ ...EXHIBIT_ROCKET_POSE });
   const sectionRef = useRef({ ...REST_SECTION });
@@ -142,6 +166,61 @@ export function RocketExhibit({
               />
             }
           />
+        </div>
+      </div>
+      <div className="rocket-exhibit-veil" aria-hidden="true" />
+      <div className="void-stars" aria-hidden="true">
+        {/* Always mounted so the canvas can size before the fade. Sealed off
+            from warp: this field ignores scroll, pointer and frame rate. */}
+        <Starfield
+          bgColor="rgba(0, 0, 0, 1)"
+          starColor="rgba(255, 255, 255, 1)"
+          speed={0.9}
+          quantity={320}
+          warpReactive={false}
+        />
+      </div>
+      <div className="void-content">
+        <div className="void-backglow" aria-hidden="true" />
+        <div className="void-panel" data-flicker-host>
+          <div className="void-panel-grid" aria-hidden="true">
+            <FlickeringGrid
+              squareSize={3}
+              gridGap={10}
+              maxOpacity={0.2}
+              flickerChance={0.16}
+              majorEvery={7}
+              interactive
+            />
+          </div>
+          <div className="void-panel-backlight" aria-hidden="true" />
+          <div className="void-panel-body">
+            <h2 className="void-partners-title">
+              <span>{partnersTitle}</span>
+            </h2>
+            <PartnersMarquee ariaLabel={partnersAria} logos={partnerLogos} />
+            <section
+              className="void-about"
+              id="about"
+              aria-labelledby="void-about-title"
+            >
+              <div className="void-about-media">
+                <img
+                  src={aboutPhotoSrc}
+                  alt={aboutPhotoAlt}
+                  width={aboutPhotoWidth}
+                  height={aboutPhotoHeight}
+                />
+                <span className="void-about-media-scan" aria-hidden="true" />
+              </div>
+              <div className="void-about-copy">
+                <h3 className="void-about-title" id="void-about-title">
+                  <span>{aboutTitle}</span>
+                </h3>
+                <p className="void-about-body">{aboutBody}</p>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>

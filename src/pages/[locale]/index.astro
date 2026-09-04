@@ -1,4 +1,12 @@
 ---
+import ansysLogo from '@/assets/images/partners/ANSYS.png';
+import dassaultLogo from '@/assets/images/partners/DASSAULT SYSTEMES.png';
+import fluidCodesLogo from '@/assets/images/partners/FLUIDCODES.png';
+import gdbLogo from '@/assets/images/partners/GDB.png';
+import matorLogo from '@/assets/images/partners/MATOR.png';
+import mpLogo from '@/assets/images/partners/MP.png';
+import aboutClubPhoto from '@/assets/images/about/about-the-club.webp';
+import tuLogo from '@/assets/images/partners/TU.png';
 import gateMetal from '@/assets/generated/gate-metal.webp';
 import scaeLogo from '@/assets/generated/scae-logo.webp';
 import contactDot from '@/assets/icons/contact-dot.svg?url';
@@ -44,6 +52,58 @@ const menuItems = [
     exhibitMission={t.home.missionConcept}
     exhibitGround={t.home.groundSegment}
     exhibitFxLabel={t.home.exhibitFx}
+    aboutTitle={t.home.aboutClub}
+    aboutBody={t.home.aboutClubBody}
+    aboutPhotoSrc={aboutClubPhoto.src}
+    aboutPhotoAlt={t.home.aboutClubPhotoAlt}
+    aboutPhotoWidth={aboutClubPhoto.width}
+    aboutPhotoHeight={aboutClubPhoto.height}
+    partnersTitle={t.home.partners}
+    partnersAria={t.home.partnersAria}
+    partnerLogos={[
+      {
+        src: tuLogo.src,
+        alt: t.home.partnerAlts.tu,
+        width: tuLogo.width,
+        height: tuLogo.height,
+      },
+      {
+        src: ansysLogo.src,
+        alt: t.home.partnerAlts.ansys,
+        width: ansysLogo.width,
+        height: ansysLogo.height,
+      },
+      {
+        src: dassaultLogo.src,
+        alt: t.home.partnerAlts.dassault,
+        width: dassaultLogo.width,
+        height: dassaultLogo.height,
+      },
+      {
+        src: fluidCodesLogo.src,
+        alt: t.home.partnerAlts.fluidCodes,
+        width: fluidCodesLogo.width,
+        height: fluidCodesLogo.height,
+      },
+      {
+        src: matorLogo.src,
+        alt: t.home.partnerAlts.mator,
+        width: matorLogo.width,
+        height: matorLogo.height,
+      },
+      {
+        src: mpLogo.src,
+        alt: t.home.partnerAlts.mp,
+        width: mpLogo.width,
+        height: mpLogo.height,
+      },
+      {
+        src: gdbLogo.src,
+        alt: t.home.partnerAlts.gdb,
+        width: gdbLogo.width,
+        height: gdbLogo.height,
+      },
+    ]}
     nav={{
       label: t.nav.label,
       brand: t.nav.brand,
@@ -52,10 +112,5 @@ const menuItems = [
     }}
     menu={{ label: t.menu.label, close: t.menu.close, items: menuItems }}
   />
-  <section
-    id="after-hero"
-    class="bg-background flex min-h-dvh w-full items-center justify-center px-6 text-center"
-  >
-    <h2 class="text-muted text-2xl sm:text-4xl">{t.home.outro}</h2>
-  </section>
+  <div id="after-hero" class="void-ascent" aria-hidden="true"></div>
 </BaseLayout>

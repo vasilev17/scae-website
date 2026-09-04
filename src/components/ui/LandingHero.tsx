@@ -11,6 +11,7 @@ import { DissolveOverlay } from '@/components/ui/DissolveOverlay';
 import { GateFrame } from '@/components/ui/GateFrame';
 import { GateNav } from '@/components/ui/GateNav';
 import { HeroRocket } from '@/components/ui/HeroRocket';
+import { type PartnerLogo } from '@/components/ui/PartnersMarquee';
 import { RocketExhibit } from '@/components/ui/RocketExhibit';
 import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
 import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
@@ -58,6 +59,15 @@ type LandingHeroProps = {
   exhibitMission: string;
   exhibitGround: string;
   exhibitFxLabel: string;
+  partnersTitle: string;
+  partnersAria: string;
+  partnerLogos: PartnerLogo[];
+  aboutTitle: string;
+  aboutBody: string;
+  aboutPhotoSrc: string;
+  aboutPhotoAlt: string;
+  aboutPhotoWidth: number;
+  aboutPhotoHeight: number;
   nav: {
     label: string;
     brand: string;
@@ -136,6 +146,27 @@ const RAIL_SLIDE_DURATION = 0.45;
 // Lock is 2.58, so 365 * 2.58 / 2 ≈ 471. Hold knobs do not touch this.
 const SCROLL_LENGTH = '+=471%';
 
+// Void ascent, after the pin. Units are that timeline's own clock.
+// Rails travel 100vw with power2.in, so they clip off-screen around
+// CAPTION_EXIT — Commodore must hit 0 then, not at HUD_EXIT.
+// VEIL_FULL is oversized so the gradient's soft head clears the top edge.
+// Solid void band starts at 68% of veil height (see .rocket-exhibit-veil).
+const HUD_EXIT = 0.45;
+const CAPTION_EXIT = HUD_EXIT * 0.42;
+const VEIL_RISE = 0.75;
+const STARS_IN = 0.25;
+const VEIL_REST = 38;
+const VEIL_FULL = 340;
+const VEIL_SOLID = 0.68;
+const STARS_AT =
+  VEIL_RISE *
+  ((100 / VEIL_SOLID - VEIL_REST) / (VEIL_FULL - VEIL_REST));
+// Content waits this much ascent progress after the field is up, then
+// fades in from below. Stars keep the earlier cover beat.
+const CONTENT_LAG = 0.14;
+const CONTENT_IN = 0.42;
+const CONTENT_RISE = 0.08;
+
 // Full viewport drop: panes travel off-screen during the open, so parking
 // behind the bottom pane is not enough. The GLB still loads in that hole.
 const ROCKET_ENTRY = 100;
@@ -165,6 +196,15 @@ export function LandingHero({
   exhibitMission,
   exhibitGround,
   exhibitFxLabel,
+  partnersTitle,
+  partnersAria,
+  partnerLogos,
+  aboutTitle,
+  aboutBody,
+  aboutPhotoSrc,
+  aboutPhotoAlt,
+  aboutPhotoWidth,
+  aboutPhotoHeight,
   nav,
   menu,
   introDuration = 2.6,
@@ -288,6 +328,104 @@ export function LandingHero({
             },
           });
           flyby.scrollTrigger?.disable();
+
+          const ascent = document.querySelector('.void-ascent');
+          const stars = root.querySelector('.void-stars');
+          const content = root.querySelector('.void-content');
+          if (ascent instanceof HTMLElement && stars instanceof HTMLElement) {
+            const rise = () => window.innerHeight * CONTENT_RISE;
+            gsap.set(stars, { opacity: 0 });
+            if (content instanceof HTMLElement) {
+              gsap.set(content, { opacity: 0, y: rise });
+            }
+            // Cover is a fraction of the veil climb. Fade is time-based, not
+            // scrubbed: reversing the wheel must not rewind the field.
+            const cover = STARS_AT / VEIL_RISE;
+            const exhibit = root.querySelector('.rocket-exhibit');
+            let starsOn = false;
+            let contentOn = false;
+            gsap
+              .timeline({
+                scrollTrigger: {
+                  trigger: ascent,
+                  start: 'top bottom',
+                  end: 'bottom bottom',
+                  scrub: true,
+                  onUpdate: (self) => {
+                    const showStars = self.progress >= cover;
+                    const showContent = self.progress >= cover + CONTENT_LAG;
+                    if (showStars !== starsOn) {
+                      starsOn = showStars;
+                      exhibit?.classList.toggle('is-void', showStars);
+                      gsap.to(stars, {
+                        opacity: showStars ? 1 : 0,
+                        duration: STARS_IN,
+                        ease: 'none',
+                        overwrite: true,
+                      });
+                    }
+                    if (
+                      content instanceof HTMLElement &&
+                      showContent !== contentOn
+                    ) {
+                      contentOn = showContent;
+                      gsap.to(content, {
+                        opacity: showContent ? 1 : 0,
+                        y: showContent ? 0 : rise(),
+                        duration: CONTENT_IN,
+                        ease: showContent ? 'power2.out' : 'power2.in',
+                        overwrite: true,
+                      });
+                    }
+                  },
+                },
+              })
+              // Rails retract the way they arrived; Commodore fades + drops.
+              // Same clock as the veil climb — nothing leaves before black moves.
+              .to(
+                '.rocket-exhibit-rail--left',
+                { x: '-100vw', ease: 'power2.in', duration: HUD_EXIT },
+                0,
+              )
+              .to(
+                '.rocket-exhibit-rail--right',
+                { x: '100vw', ease: 'power2.in', duration: HUD_EXIT },
+                0,
+              )
+              .to(
+                '.rocket-exhibit-caption',
+                {
+                  y: () => window.innerHeight * 0.12,
+                  autoAlpha: 0,
+                  ease: 'power2.in',
+                  duration: CAPTION_EXIT,
+                },
+                0,
+              )
+              // Grows past the viewport so even the gradient's soft head
+              // clears the top: the whole frame ends on void.
+              .fromTo(
+                '.rocket-exhibit',
+                { '--exhibit-veil-height': `${VEIL_REST}svh` },
+                {
+                  '--exhibit-veil-height': `${VEIL_FULL}svh`,
+                  ease: 'none',
+                  duration: VEIL_RISE,
+                },
+                0,
+              )
+              .to(
+                '.rocket-exhibit-work',
+                {
+                  y: () => -window.innerHeight * 0.12,
+                  autoAlpha: 0,
+                  ease: 'none',
+                  duration: VEIL_RISE * 0.5,
+                },
+                0,
+              );
+          }
+
           flyby.eventCallback('onUpdate', () => {
             root.querySelector('.rocket-exhibit')?.classList.toggle(
               'is-live',
@@ -574,8 +712,18 @@ export function LandingHero({
       setGateShut(true);
       gsap
         .timeline({ onComplete: () => setMenuOpen(true) })
-        // Closed is where the panes started, so the pair simply travels home —
-        // any flyby scaling is undone with it.
+        // Drop the airframe before the seam meets, so it is not sitting in
+        // the closing gap. Closed is where the panes started, so the pair
+        // simply travels home — any flyby scaling is undone with it.
+        .to(
+          '.hero-rocket',
+          {
+            yPercent: ROCKET_ENTRY,
+            duration: reduce ? 0 : duration * 1.2,
+            ease: 'power2.in',
+          },
+          0,
+        )
         .to(
           '.gate-pane-group',
           { yPercent: 0, scale: 1, duration, ease: 'power2.inOut' },
@@ -599,6 +747,15 @@ export function LandingHero({
           yPercent: perGatePane(geometry.restTop, geometry.restBottom),
           duration,
           ease: 'power2.inOut',
+        },
+        reduce ? 0 : MENU_EXIT,
+      )
+      .to(
+        '.hero-rocket',
+        {
+          yPercent: 0,
+          duration: reduce ? 0 : duration * 2.1,
+          ease: 'power2.out',
         },
         reduce ? 0 : MENU_EXIT,
       )
@@ -676,6 +833,15 @@ export function LandingHero({
             groundLabel={exhibitGround}
             fxLabel={exhibitFxLabel}
             fx={exhibitFx}
+            partnersTitle={partnersTitle}
+            partnersAria={partnersAria}
+            partnerLogos={partnerLogos}
+            aboutTitle={aboutTitle}
+            aboutBody={aboutBody}
+            aboutPhotoSrc={aboutPhotoSrc}
+            aboutPhotoAlt={aboutPhotoAlt}
+            aboutPhotoWidth={aboutPhotoWidth}
+            aboutPhotoHeight={aboutPhotoHeight}
           />
           <DissolveOverlay dissolveRef={portal} rootRef={rootRef} />
         </>

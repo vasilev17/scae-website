@@ -9,6 +9,7 @@ import {
   localeUrl,
   type Locale,
 } from '@/i18n';
+import { flags } from '@/lib/flags';
 
 type Props = {
   locale: Locale;
@@ -64,13 +65,24 @@ const canonical = new URL(localeUrl(locale, path), Astro.site ?? Astro.url);
     <meta property="og:locale" content={locale} />
   </head>
   <body>
+    {
+      flags.customCursor && (
+        <div class="site-cursor" aria-hidden="true" data-hover="false">
+          <span class="site-cursor-ring"></span>
+          <span class="site-cursor-dot"></span>
+        </div>
+      )
+    }
     <main>
       <slot />
     </main>
     <script>
+      import { flags } from '@/lib/flags';
+      import { mountCustomCursor } from '@/lib/custom-cursor';
       import { getSmoothScroll } from '@/lib/smooth-scroll';
 
       getSmoothScroll();
+      if (flags.customCursor) mountCustomCursor();
     </script>
   </body>
 </html>

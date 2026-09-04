@@ -17,6 +17,12 @@ interface StarfieldProps {
   speed?: number;
   quantity?: number;
   warpRef?: RefObject<StarfieldWarp>;
+  // On: the landing field. `warpRef` drives speed and zoom, one step per
+  // rendered frame, so the flyby can push the field around.
+  // Off: a sealed field. `warpRef` is ignored and travel runs on a fixed
+  // step, so no input, scroll or dropped frame can alter pace or streak
+  // length — variable steps are what made the stars flicker pale.
+  warpReactive?: boolean;
 }
 
 type StarTuple = [
@@ -49,6 +55,7 @@ export function Starfield({
   speed = 0.5,
   quantity = 500,
   warpRef,
+  warpReactive = true,
 }: StarfieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -110,11 +117,7 @@ export function Starfield({
       }
     };
 
-    const update = () => {
-      const warp = warpRef?.current;
-      const ratio = (quantity / 2) * (warp?.zoom ?? 1);
-      const travel = speed * (warp?.speed ?? 1);
-
+    const step = (travel: number, ratio: number) => {
       sd.current.star.arr = sd.current.star.arr.map((star) => {
         const newStar = [...star] as StarTuple;
         newStar[7] = true;
@@ -138,6 +141,32 @@ export function Starfield({
 
         return newStar;
       });
+    };
+
+    const FRAME_MS = 1000 / 60;
+    const MAX_CATCHUP = 4;
+    let pending = 0;
+    let lastTick = 0;
+
+    const update = (now: number) => {
+      if (warpReactive) {
+        const warp = warpRef?.current;
+        step(speed * (warp?.speed ?? 1), (quantity / 2) * (warp?.zoom ?? 1));
+        return;
+      }
+
+      // Fixed step, run as many times as the elapsed time covers. Every
+      // step travels the same distance, so streak length — and with it the
+      // apparent brightness — never changes with frame rate.
+      const ratio = quantity / 2;
+      pending += lastTick ? now - lastTick : FRAME_MS;
+      lastTick = now;
+      pending = Math.min(pending, FRAME_MS * MAX_CATCHUP);
+
+      while (pending >= FRAME_MS) {
+        step(speed, ratio);
+        pending -= FRAME_MS;
+      }
     };
 
     const draw = () => {
@@ -167,8 +196,8 @@ export function Starfield({
       });
     };
 
-    const loop = () => {
-      update();
+    const loop = (now: number) => {
+      update(now);
       draw();
       animationFrameRef.current = requestAnimationFrame(loop);
     };
@@ -180,7 +209,7 @@ export function Starfield({
     if (prefersReducedMotion) {
       draw();
     } else {
-      loop();
+      animationFrameRef.current = requestAnimationFrame(loop);
     }
 
     const handleResize = () => {
@@ -195,7 +224,8 @@ export function Starfield({
       const scaleY = sd.current.h / oldH;
       const scaleZ = sd.current.z / oldZ;
 
-      const ratio = (quantity / 2) * (warpRef?.current.zoom ?? 1);
+      const ratio =
+        (quantity / 2) * (warpReactive ? (warpRef?.current.zoom ?? 1) : 1);
       sd.current.star.arr.forEach((star) => {
         star[0] *= scaleX;
         star[1] *= scaleY;
@@ -218,7 +248,7 @@ export function Starfield({
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [bgColor, starColor, speed, quantity, warpRef]);
+  }, [bgColor, starColor, speed, quantity, warpRef, warpReactive]);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -22,6 +22,7 @@
 
 @theme {
   --color-background: #07070c;
+  --color-void: #000000;
   --color-foreground: #f4f4f5;
   --color-muted: #a1a1aa;
   --color-accent: #60a5fa;
@@ -55,6 +56,11 @@
   --color-neutral-700: #3f3f46;
   --color-neutral-800: #27272a;
   --color-neutral-900: #18181b;
+
+  /* Half the screenshot ring (~112px). Inner is ~1/5.6 so hover fill is even. */
+  --cursor-outer: 3.5rem;
+  --cursor-inner: 0.625rem;
+  --cursor-fill-scale: 5.6;
 }
 
 /* Inline so --duration / --delay resolve on the cell, not :root. */
@@ -115,6 +121,16 @@
 
   ::selection {
     @apply bg-accent/30 text-foreground;
+  }
+
+  /* Fine pointers only; coarse / reduced-motion keep the native cursor. */
+  @media (any-hover: hover) and (any-pointer: fine) {
+    @media (prefers-reduced-motion: no-preference) {
+      html.has-custom-cursor,
+      html.has-custom-cursor * {
+        cursor: none !important;
+      }
+    }
   }
 }
 
@@ -657,6 +673,8 @@
   }
 
   .rocket-exhibit {
+    --exhibit-veil-height: 38svh;
+
     position: fixed;
     inset: 0;
     z-index: 54;
@@ -665,6 +683,256 @@
     overflow: hidden;
     opacity: 0;
     visibility: visible;
+  }
+
+  /* Linear fade for HUD contrast. Height grows on scroll so the black
+     climbs the rocket until the frame is void, then stars come in. */
+  .rocket-exhibit-veil {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 2;
+    height: var(--exhibit-veil-height);
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(in srgb, var(--color-void) 45%, transparent) 32%,
+      var(--color-void) 68%,
+      var(--color-void) 100%
+    );
+  }
+
+  /* Once the frame is void the gradient has nothing left to show, and
+     repainting it at 340svh per scrub frame is what stalls the starfield.
+     Swap to flat paint over the viewport only. */
+  .rocket-exhibit.is-void .rocket-exhibit-veil {
+    inset: 0;
+    height: auto;
+    background: var(--color-void);
+  }
+
+  .void-stars {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    opacity: 0;
+    visibility: visible;
+    pointer-events: none;
+  }
+
+  .void-ascent {
+    height: 180vh;
+    pointer-events: none;
+  }
+
+  /* Content on the void field. Stars stay behind (z 5). This layer waits
+     a beat, then fades up. pointer-events stay off except the marquee. */
+  .void-content {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10svh 4vw;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* Accent pool on the starfield, behind the panel. The glass reads as glass
+     only because backdrop-filter has this to blur. */
+  .void-backglow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    width: 60vw;
+    height: 60vw;
+    min-width: 31.25rem;
+    min-height: 31.25rem;
+    translate: -50% -50%;
+    border-radius: 50%;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    filter: blur(7.5rem);
+  }
+
+  /* Coming-soon space glass: smoked fill, hairline rim, top centre bloom. */
+  .void-panel {
+    position: relative;
+    z-index: 1;
+    width: min(92vw, 80rem);
+    overflow: hidden;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-flag-white) 10%, transparent);
+    border-radius: 1.5rem;
+    background:
+      linear-gradient(
+        color-mix(in srgb, var(--color-flag-white) 3%, transparent),
+        color-mix(in srgb, var(--color-flag-white) 3%, transparent)
+      ),
+      color-mix(in srgb, var(--color-void) 55%, transparent);
+    backdrop-filter: blur(1.5rem);
+    box-shadow:
+      inset 0.0625rem 0.0625rem 0
+        color-mix(in srgb, var(--color-flag-white) 12%, transparent),
+      0 1.5625rem 3.125rem -0.75rem rgb(0 0 0 / 0.25);
+    pointer-events: auto;
+  }
+
+  .void-panel-grid {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(
+      ellipse 78% 72% at 50% 42%,
+      #fff 18%,
+      transparent 78%
+    );
+    mask-image: radial-gradient(
+      ellipse 78% 72% at 50% 42%,
+      #fff 18%,
+      transparent 78%
+    );
+  }
+
+  .void-panel-backlight {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(
+      70% 55% at 50% 0%,
+      color-mix(in srgb, var(--color-accent) 13%, transparent),
+      transparent 70%
+    );
+  }
+
+  .void-panel-body {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-block: 4.4svh 3.6svh;
+  }
+
+  .void-partners-title {
+    margin: 0 0 2.8svh;
+    font-family: var(--font-display);
+    font-size: clamp(1.265625rem, 4.6575svh, 3.0375rem);
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .void-about {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    align-items: start;
+    gap: 3.2vw;
+    width: 100%;
+    margin-top: 1.6svh;
+    padding: 4.2svh 4vw 0.4svh;
+    border-top: 0.0625rem solid
+      color-mix(in srgb, var(--color-accent) 22%, var(--color-flag-white) 8%);
+  }
+
+  /* Landscape crop: the source photo is nearly square and its bottom third is
+     bare floor, which left the column far taller than the copy beside it. */
+  .void-about-media {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.85rem;
+    aspect-ratio: 16 / 10;
+    isolation: isolate;
+  }
+
+  .void-about-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%;
+  }
+
+  .void-about-media-scan {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 1;
+    height: 28%;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--color-accent) 22%, transparent) 45%,
+      transparent
+    );
+    opacity: 0.55;
+  }
+
+  .void-about-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .void-about-title {
+    margin: 0 0 1.4svh;
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 3.4svh, 2.1rem);
+    line-height: 1.15;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .void-about-body {
+    margin: 0;
+    max-width: 38rem;
+    padding-left: 0.85rem;
+    border-left: 0.08rem solid
+      color-mix(in srgb, var(--color-accent) 45%, transparent);
+    font-family: var(--font-mono);
+    font-size: clamp(0.72rem, 1.7svh, 0.95rem);
+    line-height: 1.55;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-variant: normal;
+    color: color-mix(in srgb, var(--color-flag-white) 86%, transparent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .void-about-media-scan {
+      animation: void-media-scan 11s linear infinite;
+    }
+  }
+
+  @keyframes void-media-scan {
+    from {
+      transform: translateY(-120%);
+    }
+
+    to {
+      transform: translateY(420%);
+    }
+  }
+
+  @media (max-width: 48rem) {
+    .void-about {
+      grid-template-columns: 1fr;
+      gap: 2.4svh;
+    }
+
+    .void-about-body {
+      max-width: none;
+    }
   }
 
   .rocket-exhibit-space {
@@ -802,7 +1070,7 @@
     right: 0;
     bottom: 8.5svh;
     left: 0;
-    z-index: 3;
+    z-index: 4;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
@@ -1050,7 +1318,9 @@
      down the whole box, so only the first line sits in the white stop. */
   .landing-title > span,
   .hold-title > span,
-  .rocket-exhibit-work > span {
+  .rocket-exhibit-work > span,
+  .void-partners-title > span,
+  .void-about-title > span {
     color: transparent;
     background-image: linear-gradient(
       to bottom,
@@ -1072,6 +1342,138 @@
     text-align: center;
     text-transform: uppercase;
     color: var(--color-subtitle);
+  }
+
+  .partners-marquee {
+    --partner-slot-w: 10.5rem;
+    --partner-slot-h: 4.75rem;
+
+    position: relative;
+    z-index: 56;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 32svh;
+    padding-block: 4.5svh 5.5svh;
+    padding-inline: 4vw;
+    background: var(--color-void);
+  }
+
+  .void-content .partners-marquee {
+    z-index: auto;
+    width: 100%;
+    min-height: 0;
+    padding-block: 2.6svh 3.4svh;
+    padding-inline: 0;
+    background:
+      linear-gradient(
+        to right,
+        transparent,
+        color-mix(in srgb, var(--color-accent) 8%, transparent) 22%,
+        color-mix(in srgb, var(--color-accent) 8%, transparent) 78%,
+        transparent
+      );
+    box-shadow:
+      inset 0 0.0625rem 0
+        color-mix(in srgb, var(--color-accent) 32%, transparent),
+      inset 0 -0.0625rem 0
+        color-mix(in srgb, var(--color-accent) 32%, transparent);
+    pointer-events: auto;
+  }
+
+  .partners-marquee-track {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Portal seam: inward wash, then a thin accent line on top so the
+     glow never paints over the edge. LogoLoop fade already eats the
+     marks; this makes them read as coming through the light. */
+  .partners-marquee-portal {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 12;
+    width: clamp(4.5rem, 14vw, 8rem);
+  }
+
+  .partners-marquee-portal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 0.12rem;
+    background: var(--color-accent);
+    box-shadow:
+      0 0 0.35rem var(--color-accent),
+      0 0 1.1rem color-mix(in srgb, var(--color-accent) 80%, transparent);
+  }
+
+  .partners-marquee-portal--left {
+    left: 0;
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-accent) 52%, transparent),
+      color-mix(in srgb, var(--color-accent) 16%, transparent) 38%,
+      transparent
+    );
+  }
+
+  .partners-marquee-portal--left::before {
+    left: 0;
+  }
+
+  .partners-marquee-portal--right {
+    right: 0;
+    background: linear-gradient(
+      to left,
+      color-mix(in srgb, var(--color-accent) 52%, transparent),
+      color-mix(in srgb, var(--color-accent) 16%, transparent) 38%,
+      transparent
+    );
+  }
+
+  .partners-marquee-portal--right::before {
+    right: 0;
+  }
+
+  /* Same cell for every mark. object-fit: contain — no crop, no wide
+     wordmark eating the row. */
+  .partners-marquee-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--partner-slot-w);
+    height: var(--partner-slot-h);
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .partners-marquee .group\/item:hover .partners-marquee-slot {
+    transform: scale(1.12);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .partners-marquee-slot {
+      transition: none;
+    }
+
+    .partners-marquee .group\/item:hover .partners-marquee-slot {
+      transform: none;
+    }
+  }
+
+  /* Partner plates are black-backed PNGs. Lighten knocks the plate out on
+     the void band so the marks sit in the same field as the exhibit. */
+  .partners-marquee-slot img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    mix-blend-mode: lighten;
   }
 
   /* Diagonal hold: two space cards. Sibling of the pin, not inside it —
@@ -1201,5 +1603,52 @@
   .rocket-exhibit-ray {
     opacity: 1;
     transform: translate(-50%, -40%) scale(1);
+  }
+}
+
+/* Site reticle. Position via transform from src/lib/custom-cursor.ts. */
+.site-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  width: var(--cursor-outer);
+  height: var(--cursor-outer);
+  margin: calc(var(--cursor-outer) / -2) 0 0 calc(var(--cursor-outer) / -2);
+  pointer-events: none;
+  visibility: hidden;
+  mix-blend-mode: difference;
+}
+
+.site-cursor.is-visible {
+  visibility: visible;
+}
+
+.site-cursor-ring,
+.site-cursor-dot {
+  grid-area: 1 / 1;
+  border-radius: 50%;
+}
+
+.site-cursor-ring {
+  width: 100%;
+  height: 100%;
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 55%, transparent);
+  background: transparent;
+}
+
+.site-cursor-dot {
+  width: var(--cursor-inner);
+  height: var(--cursor-inner);
+  background: var(--color-foreground);
+  transform: scale(1);
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-cursor[data-hover='true'] .site-cursor-dot {
+    transform: scale(var(--cursor-fill-scale));
   }
 }
