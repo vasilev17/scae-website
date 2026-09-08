@@ -1,11 +1,26 @@
 import gsap from 'gsap';
 import { BookOpen, SatelliteDish, Scan } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 
 import { BackgroundRippleEffect } from '@/components/ui/BackgroundRippleEffect';
 import { ExhibitFx } from '@/components/ui/ExhibitFx';
 import { FlickeringGrid } from '@/components/ui/FlickeringGrid';
 import { HeroRocket } from '@/components/ui/HeroRocket';
+import {
+  MissionConceptOverlay,
+  type MissionConceptCopy,
+} from '@/components/ui/MissionConceptOverlay';
+import {
+  GroundSegmentOverlay,
+  type GroundSegmentCopy,
+  type GroundSegmentPhoto,
+} from '@/components/ui/GroundSegmentOverlay';
 import { SpecularButton } from '@/components/ui/SpecularButton';
 import { Spotlight } from '@/components/ui/Spotlight';
 import {
@@ -21,7 +36,10 @@ type RocketExhibitProps = {
   work: string;
   sectionLabel: string;
   missionLabel: string;
+  missionCopy: MissionConceptCopy;
   groundLabel: string;
+  groundCopy: GroundSegmentCopy;
+  groundPhotos: GroundSegmentPhoto[];
   fxLabel: string;
   fx: boolean;
   partnersTitle: string;
@@ -39,7 +57,10 @@ type ExhibitHudButtonProps = {
   className?: string;
   label: string;
   pressed?: boolean;
-  onClick?: () => void;
+  expanded?: boolean;
+  controls?: string;
+  haspopup?: 'dialog';
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   icon: ReactNode;
 };
 
@@ -47,6 +68,9 @@ function ExhibitHudButton({
   className = '',
   label,
   pressed,
+  expanded,
+  controls,
+  haspopup,
   onClick,
   icon,
 }: ExhibitHudButtonProps) {
@@ -55,6 +79,9 @@ function ExhibitHudButton({
       className={cn('rocket-exhibit-hud-btn', className)}
       aria-label={label}
       aria-pressed={pressed}
+      aria-expanded={expanded}
+      aria-controls={controls}
+      aria-haspopup={haspopup}
       onClick={onClick}
     >
       {icon}
@@ -72,7 +99,10 @@ export function RocketExhibit({
   work,
   sectionLabel,
   missionLabel,
+  missionCopy,
   groundLabel,
+  groundCopy,
+  groundPhotos,
   fxLabel,
   fx,
   partnersTitle,
@@ -88,13 +118,69 @@ export function RocketExhibit({
   const poseRef = useRef({ ...EXHIBIT_ROCKET_POSE });
   const sectionRef = useRef({ ...REST_SECTION });
   const [cutOpen, setCutOpen] = useState(false);
+  const [missionOpen, setMissionOpen] = useState(false);
+  const [missionMounted, setMissionMounted] = useState(false);
+  const [missionOrigin, setMissionOrigin] = useState({ x: 0, y: 0 });
+  const missionCloseTimer = useRef(0);
+  const [groundOpen, setGroundOpen] = useState(false);
+  const [groundMounted, setGroundMounted] = useState(false);
+  const [groundOrigin, setGroundOrigin] = useState({ x: 0, y: 0 });
+  const groundCloseTimer = useRef(0);
 
   useEffect(
     () => () => {
       gsap.killTweensOf(sectionRef.current);
+      window.clearTimeout(missionCloseTimer.current);
+      window.clearTimeout(groundCloseTimer.current);
     },
     [],
   );
+
+  const openMission = (event: MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    window.clearTimeout(missionCloseTimer.current);
+    window.clearTimeout(groundCloseTimer.current);
+    setGroundOpen(false);
+    setGroundMounted(false);
+    setMissionOrigin({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
+    setMissionMounted(true);
+    setMissionOpen(true);
+  };
+
+  const closeMission = () => {
+    setMissionOpen(false);
+    window.clearTimeout(missionCloseTimer.current);
+    missionCloseTimer.current = window.setTimeout(
+      () => setMissionMounted(false),
+      580,
+    );
+  };
+
+  const openGround = (event: MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    window.clearTimeout(groundCloseTimer.current);
+    window.clearTimeout(missionCloseTimer.current);
+    setMissionOpen(false);
+    setMissionMounted(false);
+    setGroundOrigin({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
+    setGroundMounted(true);
+    setGroundOpen(true);
+  };
+
+  const closeGround = () => {
+    setGroundOpen(false);
+    window.clearTimeout(groundCloseTimer.current);
+    groundCloseTimer.current = window.setTimeout(
+      () => setGroundMounted(false),
+      580,
+    );
+  };
 
   const toggleCut = () => {
     const next = !cutOpen;
@@ -134,6 +220,10 @@ export function RocketExhibit({
         <div className="rocket-exhibit-rail rocket-exhibit-rail--left">
           <ExhibitHudButton
             label={missionLabel}
+            expanded={missionOpen}
+            controls="mission-concept-dialog"
+            haspopup="dialog"
+            onClick={openMission}
             icon={
               <BookOpen
                 aria-hidden="true"
@@ -159,6 +249,10 @@ export function RocketExhibit({
         <div className="rocket-exhibit-rail rocket-exhibit-rail--right">
           <ExhibitHudButton
             label={groundLabel}
+            expanded={groundOpen}
+            controls="ground-segment-dialog"
+            haspopup="dialog"
+            onClick={openGround}
             icon={
               <SatelliteDish
                 aria-hidden="true"
@@ -223,6 +317,25 @@ export function RocketExhibit({
           </div>
         </div>
       </div>
+      {missionMounted ? (
+        <MissionConceptOverlay
+          open={missionOpen}
+          origin={missionOrigin}
+          title={missionLabel}
+          copy={missionCopy}
+          onClose={closeMission}
+        />
+      ) : null}
+      {groundMounted ? (
+        <GroundSegmentOverlay
+          open={groundOpen}
+          origin={groundOrigin}
+          title={groundLabel}
+          copy={groundCopy}
+          photos={groundPhotos}
+          onClose={closeGround}
+        />
+      ) : null}
     </div>
   );
 }

@@ -162,7 +162,33 @@
     --gate-rest-visible-top: 13.8cqh;
     --gate-rest-visible-bottom: 5.5cqh;
 
+    z-index: 50;
     container-type: size;
+  }
+
+  /* Above exhibit (54) + dissolve (55) so the slam is visible after the
+     portal has already painted over the flyby. Menu dial stays at 60.
+     isolation keeps the WebGL rocket inside this stack — without it the
+     canvas can paint over the dial. */
+  .gate-reveal.is-menu,
+  .is-void .gate-reveal.is-menu {
+    z-index: 58;
+    isolation: isolate;
+    overflow: hidden;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Hold opener: flyby airframe lives inside the gate. Raising the door
+     for the slam would flash that (often exploded) mesh over the exhibit.
+     Keep it unpainted. Panes still close over the real scene. */
+  .gate-reveal.is-menu-hold .hero-rocket {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .gate-reveal.is-menu-hold .gate-pane-group {
+    z-index: 2;
   }
 
   .gate-pane-group {
@@ -1525,6 +1551,48 @@
     transform-origin: 50% 50%;
   }
 
+  /* Icon-only menu on the diagonal hold. Sibling of `.hold-copy` so the
+     hold scale does not enlarge it. Top-right slot; slides down at
+     HOLD_START and stays. Scroll back before that clock sends it up. */
+  .hold-menu {
+    position: fixed;
+    z-index: 57;
+    top: 2.2svh;
+    right: 4.4svw;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .hold-menu[data-open='true'] {
+    visibility: hidden;
+  }
+
+  .hold-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.6svh;
+    height: 3.6svh;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    border-radius: 0.7svh;
+    box-shadow: 0 0.6svh 2.8svh rgb(33 33 33 / 0.22);
+    pointer-events: auto;
+  }
+
+  .hold-menu-btn:focus-visible {
+    outline: 0.1852svh solid var(--color-accent);
+    outline-offset: 0.28svh;
+  }
+
+  .hold-menu-icon {
+    display: block;
+    height: 1.35svh;
+    min-height: 0.85rem;
+    width: auto;
+  }
+
   .hold-block {
     position: absolute;
     display: flex;
@@ -1598,8 +1666,15 @@
     .gate-nav,
     .see-more,
     .landing-copy,
-    .hold-copy {
+    .hold-copy,
+    .hold-menu {
       opacity: 1;
+    }
+
+    .hold-menu-btn {
+      box-shadow:
+        inset 0 0 0 0.0926svh rgb(255 255 255 / 0.22),
+        0 0.6svh 2.8svh rgb(33 33 33 / 0.22);
     }
 
     /* The shader that normally draws the button edge never runs here. */
@@ -2228,11 +2303,13 @@
 
   .gallery-row {
     position: relative;
+    z-index: 1;
     display: flex;
     justify-content: center;
     gap: 2em;
     width: 100%;
     margin: 1em 0;
+    pointer-events: none;
   }
 
   .gallery-card {
@@ -2253,6 +2330,7 @@
     position: absolute;
     top: 45%;
     left: 50%;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2332,7 +2410,7 @@
     z-index: 2;
     overflow: hidden;
     mix-blend-mode: screen;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .threeui-background {
@@ -2368,6 +2446,7 @@
 
   .gallery-cta {
     position: relative;
+    z-index: 1;
     padding: 1em 2em;
     border: 0.125rem solid var(--color-flag-white);
     border-radius: 8em;
@@ -2455,6 +2534,28 @@
     pointer-events: auto;
   }
 
+  .gallery-overlay[data-mode='dome'] {
+    display: block;
+  }
+
+  .gallery-overlay[data-mode='dome'] .gallery-overlay-bar {
+    position: absolute;
+    inset: 0 auto auto;
+    z-index: 40;
+    width: 100%;
+    pointer-events: none;
+    background: linear-gradient(to bottom, var(--color-void), transparent);
+  }
+
+  .gallery-overlay[data-mode='dome'] .gallery-overlay-close {
+    pointer-events: auto;
+  }
+
+  .gallery-overlay[data-mode='dome'] .gallery-overlay-stage {
+    position: absolute;
+    inset: 0;
+  }
+
   .gallery-overlay-bar {
     display: flex;
     align-items: center;
@@ -2528,6 +2629,448 @@
   @media (max-width: 40rem) {
     .gallery-overlay-grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  .gallery-overlay-stage {
+    min-height: 0;
+  }
+
+  .dome-gallery {
+    --radius: 32.5rem;
+    --viewer-pad: 4.5rem;
+    --circ: calc(var(--radius) * 3.14);
+    --rot-y: calc((360deg / var(--segments-x)) / 2);
+    --rot-x: calc((360deg / var(--segments-y)) / 2);
+    --item-width: calc(var(--circ) / var(--segments-x));
+    --item-height: calc(var(--circ) / var(--segments-y));
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .dome-gallery-main {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+    -webkit-user-select: none;
+  }
+
+  .dome-gallery-stage {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    perspective: calc(var(--radius) * 2);
+    perspective-origin: 50% 50%;
+  }
+
+  .dome-gallery-sphere,
+  .dome-gallery-item,
+  .dome-gallery-tile {
+    transform-style: preserve-3d;
+  }
+
+  .dome-gallery-sphere {
+    transform: translateZ(calc(var(--radius) * -1));
+    will-change: transform;
+    position: absolute;
+  }
+
+  .dome-gallery-item {
+    width: calc(var(--item-width) * var(--item-size-x));
+    height: calc(var(--item-height) * var(--item-size-y));
+    position: absolute;
+    inset: -999px;
+    margin: auto;
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+    transition: transform 300ms;
+    transform: rotateY(
+        calc(
+          var(--rot-y) * (var(--offset-x) + ((var(--item-size-x) - 1) / 2)) +
+            var(--rot-y-delta, 0deg)
+        )
+      )
+      rotateX(
+        calc(
+          var(--rot-x) * (var(--offset-y) - ((var(--item-size-y) - 1) / 2)) +
+            var(--rot-x-delta, 0deg)
+        )
+      )
+      translateZ(var(--radius));
+  }
+
+  .dome-gallery-tile {
+    position: absolute;
+    inset: 0.625rem;
+    display: block;
+    padding: 0;
+    border: 0;
+    appearance: none;
+    color: inherit;
+    font: inherit;
+    overflow: hidden;
+    cursor: pointer;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    pointer-events: auto;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
+  .dome-gallery-tile--ref {
+    pointer-events: none;
+  }
+
+  .dome-gallery-tile img,
+  .dome-gallery-enlarge img,
+  .dome-gallery-enlarge-closing img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    backface-visibility: hidden;
+    filter: var(--image-filter, none);
+  }
+
+  .dome-gallery-vignette,
+  .dome-gallery-vignette-mask,
+  .dome-gallery-edge {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    margin: auto;
+  }
+
+  .dome-gallery-vignette {
+    background-image: radial-gradient(
+      transparent 65%,
+      var(--overlay-blur-color, var(--color-void)) 100%
+    );
+  }
+
+  .dome-gallery-vignette-mask {
+    backdrop-filter: blur(3px);
+    mask-image: radial-gradient(
+      transparent 70%,
+      var(--overlay-blur-color, var(--color-void)) 90%
+    );
+    -webkit-mask-image: radial-gradient(
+      transparent 70%,
+      var(--overlay-blur-color, var(--color-void)) 90%
+    );
+  }
+
+  .dome-gallery-edge {
+    left: 0;
+    right: 0;
+    z-index: 5;
+    height: 7.5rem;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--overlay-blur-color, var(--color-void))
+    );
+  }
+
+  .dome-gallery-edge--top {
+    top: 0;
+    bottom: auto;
+    rotate: 180deg;
+  }
+
+  .dome-gallery-edge--bottom {
+    top: auto;
+    bottom: 0;
+  }
+
+  .dome-gallery-viewer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--viewer-pad);
+    pointer-events: none;
+  }
+
+  .dome-gallery-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    background: color-mix(in oklab, var(--color-void) 40%, transparent);
+    backdrop-filter: blur(3px);
+    transition: opacity 500ms;
+  }
+
+  .dome-gallery[data-enlarging='true'] .dome-gallery-scrim {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .dome-gallery-frame {
+    height: auto;
+    aspect-ratio: 1;
+    display: flex;
+  }
+
+  .dome-gallery-enlarge,
+  .dome-gallery-enlarge-closing {
+    position: absolute;
+    z-index: 30;
+    overflow: hidden;
+    pointer-events: none;
+    margin: 0;
+    transform-origin: top left;
+    box-shadow: 0 0.625rem 1.875rem
+      color-mix(in oklab, var(--color-void) 35%, transparent);
+  }
+
+  .dome-gallery-enlarge {
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+
+  .dome-gallery-enlarge-closing {
+    z-index: 9999;
+  }
+
+  @media (max-aspect-ratio: 1/1) {
+    .dome-gallery-frame {
+      width: 100%;
+      height: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dome-gallery-item,
+    .dome-gallery-enlarge,
+    .dome-gallery-enlarge-closing,
+    .dome-gallery-scrim {
+      transition: none;
+    }
+  }
+
+  .mission-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 82;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    background: color-mix(in oklab, var(--color-void) 78%, transparent);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    backdrop-filter: blur(0.75rem);
+  }
+
+  .mission-overlay[data-open='true'] {
+    pointer-events: auto;
+  }
+
+  .mission-overlay-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 2.4svh 4vw 1.2svh;
+  }
+
+  .mission-overlay-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(0.85rem, 2.2svh, 1.15rem);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-foreground);
+  }
+
+  .mission-overlay-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.55rem;
+  }
+
+  .mission-overlay-close:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.25rem;
+  }
+
+  .mission-overlay-x {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .mission-overlay-stage {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: 1.5rem 2rem;
+    min-height: 0;
+    padding: 0 4vw 6svh;
+    overflow: auto;
+  }
+
+  .mission-card-wrap {
+    padding: 0;
+  }
+
+  .mission-card {
+    display: flex;
+    width: min(28rem, 92vw);
+    height: auto;
+    min-height: 22rem;
+    flex-direction: column;
+    gap: 1rem;
+    border: 0.0625rem solid
+      color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    border-radius: 1.1rem;
+    background: color-mix(
+      in oklab,
+      var(--color-void) 82%,
+      var(--color-neutral-800)
+    );
+    padding: 1.6rem 1.5rem 1.8rem;
+    box-shadow: 0 1.5rem 3rem
+      color-mix(in oklab, var(--color-void) 55%, transparent);
+  }
+
+  .mission-card-icon-wrap {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    place-items: center;
+    border: 0.0625rem solid
+      color-mix(in oklab, var(--color-accent) 45%, transparent);
+    border-radius: 0.55rem;
+    background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+    color: var(--color-accent);
+  }
+
+  .mission-card-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .mission-card-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 2.8svh, 1.45rem);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-foreground);
+  }
+
+  .mission-card-rule {
+    width: 3.2rem;
+    height: 0.12rem;
+    background: var(--color-accent);
+  }
+
+  .mission-card-body {
+    margin: 0;
+    max-width: none;
+    font-family: var(--font-display);
+    font-size: clamp(0.68rem, 1.7svh, 0.82rem);
+    line-height: 1.55;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .ground-card {
+    display: grid;
+    width: min(64rem, 94vw);
+    min-height: 0;
+    grid-template-columns: minmax(0, 1.15fr) minmax(11rem, 0.85fr);
+    gap: 1.5rem 1.75rem;
+    border: 0.0625rem solid
+      color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    border-radius: 1.1rem;
+    background: color-mix(
+      in oklab,
+      var(--color-void) 82%,
+      var(--color-neutral-800)
+    );
+    padding: 1.6rem 1.5rem 1.7rem;
+    box-shadow: 0 1.5rem 3rem
+      color-mix(in oklab, var(--color-void) 55%, transparent);
+  }
+
+  .ground-card-copy,
+  .ground-card-media {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    transform-style: preserve-3d;
+  }
+
+  .ground-card-copy > *,
+  .ground-card-media > * {
+    transform-style: preserve-3d;
+  }
+
+  .ground-card-launch {
+    color: color-mix(in oklab, var(--color-muted) 80%, var(--color-accent));
+  }
+
+  .ground-card-photo {
+    overflow: hidden;
+    width: 100%;
+    border-radius: 0.75rem;
+    background: var(--color-void);
+    box-shadow: 0 0.75rem 1.6rem
+      color-mix(in oklab, var(--color-void) 45%, transparent);
+  }
+
+  .ground-card-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  @media (max-width: 48rem) {
+    .ground-card {
+      grid-template-columns: 1fr;
+    }
+
+    .ground-card-media {
+      grid-template-columns: 1fr 1fr;
+      display: grid;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mission-card-wrap,
+    .mission-card,
+    .mission-card-title,
+    .mission-card-body,
+    .mission-card-icon-wrap,
+    .ground-card,
+    .ground-card-photo {
+      transform: none !important;
+      transition: none;
     }
   }
 }

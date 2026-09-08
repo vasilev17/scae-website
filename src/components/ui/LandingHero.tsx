@@ -13,7 +13,13 @@ import { GateNav } from '@/components/ui/GateNav';
 import { HeroRocket } from '@/components/ui/HeroRocket';
 import { type PartnerLogo } from '@/components/ui/PartnersMarquee';
 import { RocketExhibit } from '@/components/ui/RocketExhibit';
+import type { MissionConceptCopy } from '@/components/ui/MissionConceptOverlay';
+import type {
+  GroundSegmentCopy,
+  GroundSegmentPhoto,
+} from '@/components/ui/GroundSegmentOverlay';
 import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
+import { SpecularButton } from '@/components/ui/SpecularButton';
 import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
 import {
   GATE_CRACK_TRAVEL,
@@ -57,7 +63,10 @@ type LandingHeroProps = {
   exhibitWork: string;
   exhibitSection: string;
   exhibitMission: string;
+  exhibitMissionCopy: MissionConceptCopy;
   exhibitGround: string;
+  exhibitGroundCopy: GroundSegmentCopy;
+  exhibitGroundPhotos: GroundSegmentPhoto[];
   exhibitFxLabel: string;
   partnersTitle: string;
   partnersAria: string;
@@ -159,13 +168,14 @@ const VEIL_REST = 38;
 const VEIL_FULL = 340;
 const VEIL_SOLID = 0.68;
 const STARS_AT =
-  VEIL_RISE *
-  ((100 / VEIL_SOLID - VEIL_REST) / (VEIL_FULL - VEIL_REST));
+  VEIL_RISE * ((100 / VEIL_SOLID - VEIL_REST) / (VEIL_FULL - VEIL_REST));
 // Content waits this much ascent progress after the field is up, then
 // fades in from below. Stars keep the earlier cover beat.
 const CONTENT_LAG = 0.14;
 const CONTENT_IN = 0.42;
 const CONTENT_RISE = 0.08;
+const VOID_COVER = STARS_AT / VEIL_RISE;
+const VOID_CONTENT_AT = VOID_COVER + CONTENT_LAG;
 
 // Full viewport drop: panes travel off-screen during the open, so parking
 // behind the bottom pane is not enough. The GLB still loads in that hole.
@@ -176,6 +186,96 @@ const ROCKET_ENTRY_DURATION = 1.4;
 const DOOR_DURATION = 0.9;
 // Head start the dial's flicker-out gets before the gate reopens.
 const MENU_EXIT = 0.45;
+
+function paneScaleAt(flyby: gsap.core.Timeline) {
+  const time = flyby.time();
+  if (!Number.isFinite(time) || time <= 0) return 1;
+  if (time >= ZOOM_DURATION) return FLYBY_SCALE;
+  return 1 + (FLYBY_SCALE - 1) * (time / ZOOM_DURATION);
+}
+
+function holdCopyAlphaAt(flyby: gsap.core.Timeline) {
+  const time = flyby.time();
+  if (time < HOLD_START) return 0;
+  if (time < HOLD_START + HOLD_IN) return (time - HOLD_START) / HOLD_IN;
+  if (time < HOLD_OUT_AT) return 1;
+  if (time < HOLD_OUT_AT + HOLD_OUT) {
+    return 1 - (time - HOLD_OUT_AT) / HOLD_OUT;
+  }
+  return 0;
+}
+
+function scrollToHeroSection(
+  id: string,
+  flyby: gsap.core.Timeline | null,
+  extra: { immediate?: boolean } = {},
+) {
+  const lenis = getSmoothScroll();
+  const options = { force: true, ...extra };
+
+  if (id === 'home') {
+    lenis.scrollTo(0, options);
+    return;
+  }
+
+  if (id === 'our-work') {
+    const trigger = flyby?.scrollTrigger;
+    if (trigger) {
+      lenis.scrollTo(Math.max(trigger.start, trigger.end - 8), options);
+      return;
+    }
+    const ascent = document.querySelector('#after-hero');
+    if (ascent instanceof HTMLElement) {
+      lenis.scrollTo(
+        Math.max(0, ascent.offsetTop - window.innerHeight),
+        options,
+      );
+    }
+    return;
+  }
+
+  // About lives on a fixed overlay. The void spacer is the scroll beat
+  // where that panel is actually on screen.
+  if (id === 'about') {
+    const ascent = document.querySelector('#after-hero');
+    const trigger = ScrollTrigger.getAll().find((st) => st.trigger === ascent);
+    if (trigger) {
+      const progress = Math.min(0.85, VOID_CONTENT_AT + 0.08);
+      lenis.scrollTo(
+        trigger.start + (trigger.end - trigger.start) * progress,
+        options,
+      );
+      return;
+    }
+    if (ascent instanceof HTMLElement) {
+      lenis.scrollTo(ascent.offsetTop + window.innerHeight * 0.2, options);
+      return;
+    }
+    lenis.scrollTo('#after-hero', options);
+    return;
+  }
+
+  lenis.scrollTo(`#${id}`, options);
+}
+
+// Numeric scrub eases the playhead toward the scrollbar. An immediate
+// jump only moves scroll — the scene still catches up for a second.
+// Set the playhead only. Recreating the scrub tween (scrubDuration)
+// was killing in-flight door tweens and could throw mid-jump.
+function snapScrubbedTrigger(st: ScrollTrigger) {
+  const anim = st.animation;
+  if (!anim) return;
+  try {
+    gsap.killTweensOf(anim);
+    if (st.vars.scrub) {
+      anim.totalProgress(st.progress);
+      return;
+    }
+    anim.progress(ScrollTrigger.scroll() >= st.start ? 1 : 0);
+  } catch {
+    // A stale trigger must not block the door reopen.
+  }
+}
 
 export function LandingHero({
   metalSrc,
@@ -194,7 +294,10 @@ export function LandingHero({
   exhibitWork,
   exhibitSection,
   exhibitMission,
+  exhibitMissionCopy,
   exhibitGround,
+  exhibitGroundCopy,
+  exhibitGroundPhotos,
   exhibitFxLabel,
   partnersTitle,
   partnersAria,
@@ -213,6 +316,13 @@ export function LandingHero({
   const heroRef = useRef<HTMLElement>(null);
   const gateRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const holdMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuSourceRef = useRef<'gate' | 'hold'>('gate');
+  const paneScaleRef = useRef(1);
+  const holdCopyAlphaRef = useRef(0);
+  // 0 = flyby owns the panes. 1 = slammed shut. Applied after ScrollTrigger
+  // each tick so the flyby scale tween cannot overwrite the door.
+  const menuGate = useRef({ blend: 0 });
   const warpRef = useRef<StarfieldWarp>({ speed: 1, zoom: 1 });
   const rocketPose = useRef<RocketPose>({ ...REST_ROCKET_POSE });
   const portal = useRef({ ...REST_PORTAL });
@@ -223,6 +333,9 @@ export function LandingHero({
   const [menuOpen, setMenuOpen] = useState(false);
   const [exhibitFx, setExhibitFx] = useState(false);
   const flybyRef = useRef<gsap.core.Timeline | null>(null);
+  // While a menu jump settles, void fades must snap — not tween.
+  const jumpingRef = useRef(false);
+  const snapSceneRef = useRef<() => void>(() => {});
 
   /**
    * One frame loop for the page: Lenis moves the scroll and ScrollTrigger reads
@@ -235,6 +348,23 @@ export function LandingHero({
     stopInternalRaf();
     const unsubscribe = lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add(drive);
+    const applyMenuGate = () => {
+      const blend = menuGate.current.blend;
+      const gate = gateRef.current;
+      if (blend <= 0 || !gate) return;
+      const geometry = readGateGeometry(gate);
+      const scale = gsap.utils.interpolate(paneScaleRef.current, 1, blend);
+      gsap.set(gate.querySelector('.gate-pane-group--top'), {
+        scale,
+        yPercent: gsap.utils.interpolate(geometry.restTop, 0, blend),
+      });
+      gsap.set(gate.querySelector('.gate-pane-group--bottom'), {
+        scale,
+        yPercent: gsap.utils.interpolate(geometry.restBottom, 0, blend),
+      });
+    };
+    // After ScrollTrigger so the slammed door wins the same frame.
+    gsap.ticker.add(applyMenuGate);
     // Scrub reacts to scroll deltas, so a frame the tab dropped must not be
     // smoothed away into a jump.
     gsap.ticker.lagSmoothing(0);
@@ -242,6 +372,7 @@ export function LandingHero({
     return () => {
       unsubscribe();
       gsap.ticker.remove(drive);
+      gsap.ticker.remove(applyMenuGate);
       gsap.ticker.lagSmoothing(500, 33);
       startInternalRaf();
     };
@@ -296,6 +427,7 @@ export function LandingHero({
             gsap.set('.see-more', { autoAlpha: 1 });
             gsap.set('.landing-copy', { autoAlpha: 1 });
             gsap.set('.hold-copy', { autoAlpha: 1, scale: 1 });
+            gsap.set('.hold-menu', { yPercent: 0, autoAlpha: 1 });
             gsap.set('.hero-rocket', { yPercent: 0 });
             return;
           }
@@ -309,6 +441,7 @@ export function LandingHero({
             scale: HOLD_SCALE_FROM,
             transformOrigin: '50% 50%',
           });
+          gsap.set('.hold-menu', { yPercent: -160, autoAlpha: 0 });
           gsap.set('.hero-rocket', { yPercent: ROCKET_ENTRY });
 
           // Built first so the intro can hand over to it, but held inert until
@@ -322,9 +455,12 @@ export function LandingHero({
               pinSpacing: true,
               scrub: 1,
               onToggle: (self) =>
-                gsap.set('.gate-pane-group, .hero-interior, .hold-copy', {
-                  willChange: self.isActive ? 'transform' : 'auto',
-                }),
+                gsap.set(
+                  '.gate-pane-group, .hero-interior, .hold-copy, .hold-menu',
+                  {
+                    willChange: self.isActive ? 'transform' : 'auto',
+                  },
+                ),
             },
           });
           flyby.scrollTrigger?.disable();
@@ -332,6 +468,8 @@ export function LandingHero({
           const ascent = document.querySelector('.void-ascent');
           const stars = root.querySelector('.void-stars');
           const content = root.querySelector('.void-content');
+          let ascentTrigger: ScrollTrigger | undefined;
+          let paintVoidNow: ((progress: number) => void) | undefined;
           if (ascent instanceof HTMLElement && stars instanceof HTMLElement) {
             const rise = () => window.innerHeight * CONTENT_RISE;
             gsap.set(stars, { opacity: 0 });
@@ -340,11 +478,38 @@ export function LandingHero({
             }
             // Cover is a fraction of the veil climb. Fade is time-based, not
             // scrubbed: reversing the wheel must not rewind the field.
-            const cover = STARS_AT / VEIL_RISE;
             const exhibit = root.querySelector('.rocket-exhibit');
             let starsOn = false;
             let contentOn = false;
-            gsap
+            const paintVoid = (progress: number, instant: boolean) => {
+              const showStars = progress >= VOID_COVER;
+              const showContent = progress >= VOID_CONTENT_AT;
+              if (showStars !== starsOn || instant) {
+                starsOn = showStars;
+                exhibit?.classList.toggle('is-void', showStars);
+                root.classList.toggle('is-void', showStars);
+                gsap.to(stars, {
+                  opacity: showStars ? 1 : 0,
+                  duration: instant ? 0 : STARS_IN,
+                  ease: 'none',
+                  overwrite: true,
+                });
+              }
+              if (
+                content instanceof HTMLElement &&
+                (showContent !== contentOn || instant)
+              ) {
+                contentOn = showContent;
+                gsap.to(content, {
+                  opacity: showContent ? 1 : 0,
+                  y: showContent ? 0 : rise(),
+                  duration: instant ? 0 : CONTENT_IN,
+                  ease: showContent ? 'power2.out' : 'power2.in',
+                  overwrite: true,
+                });
+              }
+            };
+            const voidTl = gsap
               .timeline({
                 scrollTrigger: {
                   trigger: ascent,
@@ -352,32 +517,7 @@ export function LandingHero({
                   end: 'bottom bottom',
                   scrub: true,
                   onUpdate: (self) => {
-                    const showStars = self.progress >= cover;
-                    const showContent = self.progress >= cover + CONTENT_LAG;
-                    if (showStars !== starsOn) {
-                      starsOn = showStars;
-                      exhibit?.classList.toggle('is-void', showStars);
-                      root.classList.toggle('is-void', showStars);
-                      gsap.to(stars, {
-                        opacity: showStars ? 1 : 0,
-                        duration: STARS_IN,
-                        ease: 'none',
-                        overwrite: true,
-                      });
-                    }
-                    if (
-                      content instanceof HTMLElement &&
-                      showContent !== contentOn
-                    ) {
-                      contentOn = showContent;
-                      gsap.to(content, {
-                        opacity: showContent ? 1 : 0,
-                        y: showContent ? 0 : rise(),
-                        duration: CONTENT_IN,
-                        ease: showContent ? 'power2.out' : 'power2.in',
-                        overwrite: true,
-                      });
-                    }
+                    paintVoid(self.progress, jumpingRef.current);
                   },
                 },
               })
@@ -425,6 +565,8 @@ export function LandingHero({
                 },
                 0,
               );
+            ascentTrigger = voidTl.scrollTrigger;
+            paintVoidNow = (progress) => paintVoid(progress, true);
           }
 
           // The exhibit is a fixed overlay that never scrolls away on its own,
@@ -450,11 +592,23 @@ export function LandingHero({
               .set('.void-panel', { pointerEvents: 'none' }, 0.05);
           }
 
+          snapSceneRef.current = () => {
+            ScrollTrigger.update();
+            for (const st of ScrollTrigger.getAll()) {
+              snapScrubbedTrigger(st);
+            }
+            if (ascentTrigger && paintVoidNow) {
+              paintVoidNow(ascentTrigger.progress);
+            }
+          };
+
           flyby.eventCallback('onUpdate', () => {
-            root.querySelector('.rocket-exhibit')?.classList.toggle(
-              'is-live',
-              flyby.time() >= HOLD_OUT_AT + HOLD_OUT,
-            );
+            root
+              .querySelector('.rocket-exhibit')
+              ?.classList.toggle(
+                'is-live',
+                flyby.time() >= HOLD_OUT_AT + HOLD_OUT,
+              );
           });
           flybyRef.current = flyby;
 
@@ -541,6 +695,21 @@ export function LandingHero({
                 duration: HOLD_OUT,
               },
               HOLD_OUT_AT,
+            )
+            // No out tween. Past the diagonal the control stays put so later
+            // screens still have a way back into the dial. Scroll back before
+            // HOLD_START reverses this and it slides up out of view.
+            .fromTo(
+              '.hold-menu',
+              { yPercent: -160, autoAlpha: 0 },
+              {
+                yPercent: 0,
+                autoAlpha: 1,
+                ease: 'none',
+                duration: HOLD_IN,
+                immediateRender: false,
+              },
+              HOLD_START,
             );
 
           if (ROCKET_DISASSEMBLE) {
@@ -576,11 +745,7 @@ export function LandingHero({
             // first title are gone (ZOOM_DURATION). Overlay at dissolve 0
             // still looks like the flyby; hold-copy sits above it (z 56).
             // Explode / hole then only tween uniforms — no first paint.
-            flyby.set(
-              '.rocket-exhibit, .dissolve-overlay',
-              { opacity: 0 },
-              0,
-            );
+            flyby.set('.rocket-exhibit, .dissolve-overlay', { opacity: 0 }, 0);
             flyby.set(
               '.rocket-exhibit, .dissolve-overlay',
               { opacity: 1 },
@@ -712,6 +877,7 @@ export function LandingHero({
 
       return () => {
         flybyRef.current = null;
+        snapSceneRef.current = () => {};
         media.revert();
       };
     },
@@ -722,73 +888,196 @@ export function LandingHero({
    * Shuts the gate on the way in and reopens it on the way out, with the dial
    * held to the stretch where the panes are still. Ignored mid-transition.
    */
-  const runToggle = () => {
+  const slamPanes = (
+    source: 'gate' | 'hold',
+    onComplete: () => void,
+  ) => {
     const gate = gateRef.current;
-    if (!gate || gateShut !== menuOpen) return;
+    if (!gate) return;
 
-    const geometry = readGateGeometry(gate);
     const reduce = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
     ).matches;
     const duration = reduce ? 0 : DOOR_DURATION;
 
+    menuSourceRef.current = source;
+    paneScaleRef.current =
+      Number(gsap.getProperty('.gate-pane-group--top', 'scale')) || 1;
+    holdCopyAlphaRef.current =
+      Number(gsap.getProperty('.hold-copy', 'autoAlpha')) || 0;
+    setGateShut(true);
+    gate.classList.add('is-menu');
+    if (source === 'hold') gate.classList.add('is-menu-hold');
+    const open = gsap.timeline({ onComplete });
+    // Pane slam is the blend — flyby still writes scale every tick, so a
+    // direct tween on the groups loses. Hold opener leaves the rocket
+    // put; panes just close over the scene.
+    open.to(
+      menuGate.current,
+      { blend: 1, duration, ease: 'power2.inOut' },
+      0,
+    );
+    if (source === 'gate') {
+      open.to(
+        '.hero-rocket',
+        {
+          yPercent: ROCKET_ENTRY,
+          duration: reduce ? 0 : duration * 1.2,
+          ease: 'power2.in',
+        },
+        0,
+      );
+    }
+    open
+      .to('.gate-nav', { autoAlpha: 0, duration: duration * 0.3 }, 0)
+      .to('.hold-copy', { autoAlpha: 0, duration: duration * 0.25 }, 0);
+  };
+
+  const runToggle = (source: 'gate' | 'hold' = 'gate') => {
+    const gate = gateRef.current;
+    if (!gate) return;
+    const reduce = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    const duration = reduce ? 0 : DOOR_DURATION;
+    // Jump died after slam: door shut, dial gone. Let this click reopen.
+    if (gateShut && !menuOpen) {
+      openPanes({
+        duration,
+        reduce,
+        moveRocket: menuSourceRef.current === 'gate' || source === 'gate',
+        delay: 0,
+      });
+      return;
+    }
+    if (gateShut !== menuOpen) return;
+
     if (!menuOpen) {
-      setGateShut(true);
-      gsap
-        .timeline({ onComplete: () => setMenuOpen(true) })
-        // Drop the airframe before the seam meets, so it is not sitting in
-        // the closing gap. Closed is where the panes started, so the pair
-        // simply travels home — any flyby scaling is undone with it.
-        .to(
-          '.hero-rocket',
-          {
-            yPercent: ROCKET_ENTRY,
-            duration: reduce ? 0 : duration * 1.2,
-            ease: 'power2.in',
-          },
-          0,
-        )
-        .to(
-          '.gate-pane-group',
-          { yPercent: 0, scale: 1, duration, ease: 'power2.inOut' },
-          0,
-        )
-        .to('.gate-nav', { autoAlpha: 0, duration: duration * 0.3 }, 0);
+      slamPanes(source, () => setMenuOpen(true));
       return;
     }
 
     setMenuOpen(false);
-    gsap
-      .timeline({
-        onComplete: () => {
-          setGateShut(false);
-          menuButtonRef.current?.focus();
-        },
-      })
-      .to(
-        '.gate-pane-group',
-        {
-          yPercent: perGatePane(geometry.restTop, geometry.restBottom),
-          duration,
-          ease: 'power2.inOut',
-        },
-        reduce ? 0 : MENU_EXIT,
-      )
-      .to(
+    openPanes({
+      duration,
+      reduce,
+      moveRocket: menuSourceRef.current === 'gate',
+      delay: reduce ? 0 : MENU_EXIT,
+    });
+  };
+
+  const openPanes = ({
+    duration,
+    reduce,
+    moveRocket,
+    delay,
+  }: {
+    duration: number;
+    reduce: boolean;
+    moveRocket: boolean;
+    delay: number;
+  }) => {
+    const gate = gateRef.current;
+    if (!gate) return;
+    const fromHold = menuSourceRef.current === 'hold';
+
+    const close = gsap.timeline({
+      onComplete: () => {
+        gate.classList.remove('is-menu', 'is-menu-hold');
+        setGateShut(false);
+        if (fromHold) {
+          holdMenuButtonRef.current?.focus();
+          return;
+        }
+        menuButtonRef.current?.focus();
+      },
+    });
+    close.to(
+      menuGate.current,
+      { blend: 0, duration, ease: 'power2.inOut' },
+      delay,
+    );
+    if (moveRocket) {
+      close.to(
         '.hero-rocket',
         {
           yPercent: 0,
           duration: reduce ? 0 : duration * 2.1,
           ease: 'power2.out',
         },
-        reduce ? 0 : MENU_EXIT,
-      )
-      .to('.gate-nav', { autoAlpha: 1, duration: duration * 0.3 }, '>-0.35');
+        delay,
+      );
+    }
+    close
+      .to('.gate-nav', { autoAlpha: 1, duration: duration * 0.3 }, '>-0.35')
+      .to(
+        '.hold-copy',
+        {
+          autoAlpha: holdCopyAlphaRef.current,
+          duration: duration * 0.3,
+        },
+        delay,
+      );
   };
 
   // Wrapped at click time rather than during render: the wrapper reads refs,
   // and the scoping and cleanup it adds are the same either way.
-  const toggleMenu = () => contextSafe(runToggle)();
+  const toggleMenu = (source: 'gate' | 'hold' = 'gate') =>
+    contextSafe(() => runToggle(source))();
+
+  const jumpToSection = (id: string) => {
+    jumpingRef.current = true;
+    scrollToHeroSection(id, flybyRef.current, { immediate: true });
+
+    const finish = () => {
+      try {
+        snapSceneRef.current();
+        if (id === 'contact' || id === 'gallery') {
+          gsap.set('.rocket-exhibit', { autoAlpha: 0 });
+          gsap.set('.void-panel', { pointerEvents: 'none' });
+        }
+        const flyby = flybyRef.current;
+        if (flyby) {
+          paneScaleRef.current = paneScaleAt(flyby);
+          holdCopyAlphaRef.current = holdCopyAlphaAt(flyby);
+        }
+      } finally {
+        jumpingRef.current = false;
+        const reduce = window.matchMedia(
+          '(prefers-reduced-motion: reduce)',
+        ).matches;
+        openPanes({
+          duration: reduce ? 0 : DOOR_DURATION,
+          reduce,
+          moveRocket: id === 'home',
+          delay: 0,
+        });
+      }
+    };
+
+    requestAnimationFrame(() => finish());
+  };
+
+  const arriveThenOpen = (id: string) => {
+    const reduce = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    setMenuOpen(false);
+    gsap.delayedCall(reduce ? 0 : MENU_EXIT, () => jumpToSection(id));
+  };
+
+  const coverThenArrive = (id: string) => {
+    slamPanes('gate', () => jumpToSection(id));
+  };
+
+  const navigateTo = (id: string) => {
+    if (gateShut !== menuOpen) return;
+    if (menuOpen) {
+      contextSafe(() => arriveThenOpen(id))();
+      return;
+    }
+    contextSafe(() => coverThenArrive(id))();
+  };
 
   const skipToPanesClear = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -847,6 +1136,18 @@ export function LandingHero({
           <p className="hold-body">{holdGoalBody}</p>
         </div>
       </div>
+      <div className="hold-menu" data-open={menuOpen}>
+        <SpecularButton
+          ref={holdMenuButtonRef}
+          className="hold-menu-btn"
+          aria-label={nav.menu}
+          aria-expanded={menuOpen}
+          aria-controls="gate-menu"
+          onClick={() => toggleMenu('hold')}
+        >
+          <img src={menuIconSrc} alt="" className="hold-menu-icon" />
+        </SpecularButton>
+      </div>
       {ROCKET_PORTAL ? (
         <>
           <RocketExhibit
@@ -854,7 +1155,10 @@ export function LandingHero({
             work={exhibitWork}
             sectionLabel={exhibitSection}
             missionLabel={exhibitMission}
+            missionCopy={exhibitMissionCopy}
             groundLabel={exhibitGround}
+            groundCopy={exhibitGroundCopy}
+            groundPhotos={exhibitGroundPhotos}
             fxLabel={exhibitFxLabel}
             fx={exhibitFx}
             partnersTitle={partnersTitle}
@@ -889,7 +1193,8 @@ export function LandingHero({
           contactLabel={nav.contact}
           menuLabel={nav.menu}
           menuOpen={menuOpen}
-          onMenuToggle={toggleMenu}
+          onMenuToggle={() => toggleMenu('gate')}
+          onContact={() => navigateTo('contact')}
           menuButtonRef={menuButtonRef}
         />
       </GateFrame>
@@ -898,7 +1203,8 @@ export function LandingHero({
         items={menu.items}
         label={menu.label}
         closeLabel={menu.close}
-        onClose={toggleMenu}
+        onClose={() => toggleMenu(menuSourceRef.current)}
+        onNavigate={(item) => navigateTo(item.id)}
         centerIconSrc={menuIconSrc}
       />
     </div>

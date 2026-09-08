@@ -32,6 +32,7 @@ export type SpecularButtonProps = {
   'aria-label'?: string;
   'aria-expanded'?: boolean;
   'aria-controls'?: string;
+  'aria-haspopup'?: 'dialog';
   'aria-pressed'?: boolean;
 };
 
@@ -140,6 +141,7 @@ export function SpecularButton({
   'aria-label': ariaLabel,
   'aria-expanded': ariaExpanded,
   'aria-controls': ariaControls,
+  'aria-haspopup': ariaHaspopup,
   'aria-pressed': ariaPressed,
 }: SpecularButtonProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -371,6 +373,7 @@ export function SpecularButton({
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
+      aria-haspopup={ariaHaspopup}
       aria-pressed={ariaPressed}
       className={`relative cursor-pointer border-none transition-transform duration-150 outline-none active:scale-[0.97] disabled:cursor-default disabled:opacity-55 disabled:active:scale-100 ${className}`}
       style={

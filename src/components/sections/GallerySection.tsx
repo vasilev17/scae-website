@@ -1,7 +1,13 @@
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
 
 import { GalleryOverlay } from '@/components/ui/GalleryOverlay';
 import { LightningTitle } from '@/components/ui/LightningTitle';
@@ -96,7 +102,7 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
   const closeOverlay = useCallback(() => {
     setOverlayOpen(false);
     window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setOverlayMounted(false), 320);
+    closeTimer.current = window.setTimeout(() => setOverlayMounted(false), 580);
   }, []);
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
@@ -122,14 +128,16 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
           }
 
           const pairs: CardPair[] = [];
-          gsap.utils.toArray<HTMLElement>('.gallery-row').forEach((row, index) => {
-            const travel = CARD_TRAVEL[index];
-            const left = row.querySelector('.gallery-card-left');
-            const right = row.querySelector('.gallery-card-right');
-            if (!travel || !(left instanceof HTMLElement)) return;
-            if (!(right instanceof HTMLElement)) return;
-            pairs.push({ left, right, travel });
-          });
+          gsap.utils
+            .toArray<HTMLElement>('.gallery-row')
+            .forEach((row, index) => {
+              const travel = CARD_TRAVEL[index];
+              const left = row.querySelector('.gallery-card-left');
+              const right = row.querySelector('.gallery-card-right');
+              if (!travel || !(left instanceof HTMLElement)) return;
+              if (!(right instanceof HTMLElement)) return;
+              pairs.push({ left, right, travel });
+            });
 
           poseCards(pairs, 0);
 

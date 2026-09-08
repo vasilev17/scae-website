@@ -26,7 +26,7 @@ export function GateFrame({
   return (
     <div
       ref={ref}
-      className="gate-reveal pointer-events-none fixed inset-0 z-50"
+      className="gate-reveal pointer-events-none fixed inset-0"
       style={{ '--gate-metal': `url("${metalSrc}")` } as CSSProperties}
     >
       <div
