@@ -703,6 +703,14 @@
     );
   }
 
+  /* The frame reads as space, so its own backdrop must be void too. The
+     veil, stars and content are svh-sized layers over a viewport-sized
+     frame: any rounding or stale measure leaves a strip of the lighter
+     `--color-background` along an edge, which paints as a pane. */
+  .rocket-exhibit.is-void {
+    background: var(--color-void);
+  }
+
   /* Once the frame is void the gradient has nothing left to show, and
      repainting it at 340svh per scrub frame is what stalls the starfield.
      Swap to flat paint over the viewport only. */
@@ -710,6 +718,21 @@
     inset: 0;
     height: auto;
     background: var(--color-void);
+  }
+
+  /* Rails should tween off during the veil climb, but the flyby timeline
+     can pin them at x: 0. Once the frame is void the HUD is leftover chrome
+     under the partners card — kill the whole row. */
+  .rocket-exhibit.is-void .rocket-exhibit-hud,
+  .rocket-exhibit.is-void .rocket-exhibit-work {
+    display: none !important;
+  }
+
+  /* Sibling leftovers sit above / beside the exhibit. Same clock. */
+  .is-void .dissolve-overlay,
+  .is-void .gate-reveal {
+    visibility: hidden;
+    opacity: 0;
   }
 
   .void-stars {
@@ -721,13 +744,18 @@
     pointer-events: none;
   }
 
+  /* Scroll spacer for the void era. It sits under the fixed exhibit, so it
+     only paints while that overlay fades out for the contact screen — and
+     the body's lighter `--color-background` reads as a pane in that gap. */
   .void-ascent {
     height: 180vh;
+    background: var(--color-void);
     pointer-events: none;
   }
 
   /* Content on the void field. Stars stay behind (z 5). This layer waits
-     a beat, then fades up. pointer-events stay off except the marquee. */
+     a beat, then fades up. Keep children deaf until `.is-void` or the
+     opacity-0 panel (z 6) eats exhibit HUD clicks and ripple hover. */
   .void-content {
     position: absolute;
     inset: 0;
@@ -736,7 +764,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 10svh 4vw;
+    overflow: hidden;
+    padding: 4svh 4vw;
     pointer-events: none;
     opacity: 0;
   }
@@ -779,6 +808,10 @@
       inset 0.0625rem 0.0625rem 0
         color-mix(in srgb, var(--color-flag-white) 12%, transparent),
       0 1.5625rem 3.125rem -0.75rem rgb(0 0 0 / 0.25);
+    pointer-events: none;
+  }
+
+  .rocket-exhibit.is-void .void-panel {
     pointer-events: auto;
   }
 
@@ -1320,7 +1353,8 @@
   .hold-title > span,
   .rocket-exhibit-work > span,
   .void-partners-title > span,
-  .void-about-title > span {
+  .void-about-title > span,
+  .contact-title > span {
     color: transparent;
     background-image: linear-gradient(
       to bottom,
@@ -1365,19 +1399,22 @@
     min-height: 0;
     padding-block: 2.6svh 3.4svh;
     padding-inline: 0;
-    background:
-      linear-gradient(
-        to right,
-        transparent,
-        color-mix(in srgb, var(--color-accent) 8%, transparent) 22%,
-        color-mix(in srgb, var(--color-accent) 8%, transparent) 78%,
-        transparent
-      );
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in srgb, var(--color-accent) 8%, transparent) 22%,
+      color-mix(in srgb, var(--color-accent) 8%, transparent) 78%,
+      transparent
+    );
     box-shadow:
       inset 0 0.0625rem 0
         color-mix(in srgb, var(--color-accent) 32%, transparent),
       inset 0 -0.0625rem 0
         color-mix(in srgb, var(--color-accent) 32%, transparent);
+    pointer-events: none;
+  }
+
+  .rocket-exhibit.is-void .void-content .partners-marquee {
     pointer-events: auto;
   }
 
@@ -1589,6 +1626,908 @@
     .gate-menu-segment[data-pushed='true'] .gate-menu-index {
       animation: none;
       fill: var(--color-background);
+    }
+  }
+
+  /* Contact. Own screen after the void ascent: the exhibit overlay is faded
+     out by the time this is readable, so it paints its own black. */
+  .contact {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    min-height: 100svh;
+    padding: 10svh 4vw 8svh;
+    scroll-margin-top: 4svh;
+    background: var(--color-void);
+    isolation: isolate;
+  }
+
+  .contact::before {
+    content: '';
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    z-index: -1;
+    width: 55vw;
+    height: 55vw;
+    min-width: 28rem;
+    min-height: 28rem;
+    translate: -50% 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--color-accent) 9%, transparent);
+    filter: blur(7.5rem);
+  }
+
+  .contact-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: start;
+    gap: clamp(2rem, 5vw, 5rem);
+    width: min(92vw, 80rem);
+  }
+
+  .contact-lead {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .contact-form-shell {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .contact-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 5.2svh, 3.4rem);
+    line-height: 1.1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .contact-intro {
+    margin: 1.2svh 0 3.4svh;
+    max-width: 30rem;
+    font-family: var(--font-mono);
+    font-size: clamp(0.68rem, 1.6svh, 0.88rem);
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-flag-white) 70%, transparent);
+  }
+
+  .contact-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5rem;
+    margin-bottom: 2.6svh;
+    border-bottom: 0.0625rem solid
+      color-mix(in srgb, var(--color-flag-white) 10%, transparent);
+  }
+
+  .contact-tab {
+    position: relative;
+    padding: 0 0 0.7rem;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: clamp(0.68rem, 1.7svh, 0.92rem);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-flag-white) 38%, transparent);
+    transition: color 220ms ease;
+  }
+
+  .contact-tab::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -0.0625rem;
+    height: 0.0625rem;
+    background: var(--color-accent);
+    scale: 0 1;
+    transform-origin: left center;
+    transition: scale 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .contact-tab:hover {
+    color: color-mix(in srgb, var(--color-flag-white) 72%, transparent);
+  }
+
+  .contact-tab[aria-selected='true'] {
+    color: var(--color-foreground);
+  }
+
+  .contact-tab[aria-selected='true']::after {
+    scale: 1 1;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .contact-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .contact-field-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-flag-white) 55%, transparent);
+  }
+
+  .contact-field-note {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--color-flag-white) 30%, transparent);
+  }
+
+  .contact-input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-flag-white) 12%, transparent);
+    border-radius: 0.6rem;
+    background: color-mix(in srgb, var(--color-flag-white) 4%, transparent);
+    color: var(--color-foreground);
+    /* Typed answers read as plain text, not as chrome — system font keeps
+       long messages legible where Disket Mono fights the reader. */
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    outline: none;
+    transition:
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  .contact-input::placeholder {
+    color: color-mix(in srgb, var(--color-flag-white) 22%, transparent);
+  }
+
+  .contact-input:focus-visible {
+    border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+    box-shadow: 0 0 0 0.0625rem
+      color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .contact-input[aria-invalid='true'] {
+    border-color: color-mix(in srgb, var(--color-flag-red) 55%, transparent);
+  }
+
+  .contact-textarea {
+    min-height: 8.5rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  .contact-field--grow .contact-textarea {
+    flex: 1;
+  }
+
+  .contact-field-error {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 1.15rem;
+    padding-block: 0.15rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-style: italic;
+    letter-spacing: 0.04em;
+    color: color-mix(
+      in srgb,
+      var(--color-flag-red) 60%,
+      var(--color-flag-white)
+    );
+  }
+
+  .contact-field-count {
+    margin-left: auto;
+    font-style: normal;
+    color: color-mix(in srgb, var(--color-flag-white) 28%, transparent);
+  }
+
+  /* Off-canvas rather than display:none — a hidden input is not submitted,
+     and Formspree needs the empty value to score the submission. */
+  .contact-honeypot {
+    position: absolute;
+    left: -100vw;
+    width: 0.0625rem;
+    height: 0.0625rem;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .contact-form-status {
+    min-height: 1.15rem;
+    margin: 0 0 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-style: italic;
+    letter-spacing: 0.04em;
+    text-align: center;
+    color: color-mix(
+      in srgb,
+      var(--color-flag-red) 60%,
+      var(--color-flag-white)
+    );
+  }
+
+  .contact-submit {
+    width: 100%;
+    padding: 0.9rem 1.5rem;
+    border-radius: 0.75rem;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .contact-submit-face {
+    display: grid;
+    place-items: center;
+    min-height: 1.1em;
+  }
+
+  .contact-submit-face > * {
+    grid-area: 1 / 1;
+  }
+
+  .contact-submit-busy,
+  .contact-submit-fail {
+    display: none;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .contact-submit-busy {
+    border: 0.125rem solid
+      color-mix(in srgb, var(--color-flag-white) 35%, transparent);
+    border-top-color: var(--color-flag-white);
+    border-radius: 50%;
+  }
+
+  .contact-submit-fail {
+    color: var(--color-flag-red);
+    font-family: var(--font-sans);
+    font-size: 1.35rem;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .contact-submit-face[data-status='loading'] .contact-submit-label,
+  .contact-submit-face[data-status='error'] .contact-submit-label {
+    visibility: hidden;
+  }
+
+  .contact-submit-face[data-status='loading'] .contact-submit-busy {
+    display: block;
+    animation: contact-spin 0.7s linear infinite;
+  }
+
+  .contact-submit-face[data-status='error'] .contact-submit-fail {
+    display: grid;
+    place-items: center;
+    animation: contact-shake 0.25s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .contact-submit-face[data-status='loading'] .contact-submit-busy,
+    .contact-submit-face[data-status='error'] .contact-submit-fail {
+      animation: none;
+    }
+  }
+
+  @keyframes contact-spin {
+    to {
+      rotate: 1turn;
+    }
+  }
+
+  @keyframes contact-shake {
+    25% {
+      translate: -0.2rem 0;
+    }
+    75% {
+      translate: 0.2rem 0;
+    }
+  }
+
+  .contact-success {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1.7rem 1.6rem 1.8rem;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-flag-white) 10%, transparent);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(
+        color-mix(in srgb, var(--color-flag-white) 3%, transparent),
+        color-mix(in srgb, var(--color-flag-white) 3%, transparent)
+      ),
+      color-mix(in srgb, var(--color-void) 55%, transparent);
+    backdrop-filter: blur(1.5rem);
+  }
+
+  .contact-success-mark {
+    display: grid;
+    place-items: center;
+    width: 3.1rem;
+    height: 3.1rem;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-accent) 55%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    color: var(--color-accent);
+    box-shadow: 0 0 1.6rem
+      color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+
+  .contact-success-title {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 3svh, 1.7rem);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+
+  .contact-success-body {
+    margin: 0;
+    max-width: 28rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.65;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-flag-white) 72%, transparent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .contact-success-mark {
+      animation: contact-pulse 1.9s ease-in-out infinite;
+    }
+  }
+
+  @keyframes contact-pulse {
+    50% {
+      opacity: 0.45;
+      scale: 0.88;
+    }
+  }
+
+  .contact-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 2.4svh;
+    min-width: 0;
+  }
+
+  .contact-badge-stage {
+    position: relative;
+    height: clamp(24rem, 62svh, 42rem);
+    touch-action: none;
+  }
+
+  .badge-lanyard-canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    cursor: grab;
+  }
+
+  .badge-lanyard-canvas:active {
+    cursor: grabbing;
+  }
+
+  /* Printed stand-in while the scene loads, and the whole badge under
+     reduced motion. */
+  .contact-badge-poster {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .contact-badge-poster-strap {
+    width: 0.125rem;
+    height: 26%;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-flag-white)
+    );
+  }
+
+  .contact-badge-poster-card {
+    display: grid;
+    place-items: center;
+    height: 78%;
+    aspect-ratio: 0.71;
+    border-radius: 0.75rem;
+    background: var(--color-gate-light);
+    box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.55);
+  }
+
+  .contact-badge-poster-card img {
+    width: 72%;
+    height: auto;
+  }
+
+  .contact-socials {
+    position: relative;
+    padding: 1.6rem 1.5rem 1.5rem;
+    overflow: hidden;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-flag-white) 10%, transparent);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(
+        color-mix(in srgb, var(--color-flag-white) 3%, transparent),
+        color-mix(in srgb, var(--color-flag-white) 3%, transparent)
+      ),
+      color-mix(in srgb, var(--color-void) 55%, transparent);
+    backdrop-filter: blur(1.5rem);
+  }
+
+  .contact-socials-title {
+    margin: 0 0 1.5rem;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-flag-white) 82%, transparent);
+  }
+
+  .contact-socials-array {
+    position: relative;
+  }
+
+  .contact-socials-bus {
+    position: absolute;
+    top: 1.375rem;
+    left: 14%;
+    right: 14%;
+    height: 0.0625rem;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-flag-white) 14%, transparent);
+  }
+
+  .contact-socials-pulse {
+    position: absolute;
+    inset-block: 0;
+    width: 24%;
+    translate: -110% 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-accent),
+      transparent
+    );
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .contact-socials-pulse {
+      animation: contact-bus 5s linear infinite;
+    }
+  }
+
+  @keyframes contact-bus {
+    to {
+      translate: 460% 0;
+    }
+  }
+
+  .contact-socials-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .contact-socials-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    text-decoration: none;
+  }
+
+  .contact-socials-diamond {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    rotate: 45deg;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-accent) 38%, transparent);
+    background: color-mix(in srgb, var(--color-void) 82%, transparent);
+    transition:
+      border-color 240ms ease,
+      background-color 240ms ease,
+      scale 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .contact-socials-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    rotate: -45deg;
+    color: color-mix(in srgb, var(--color-flag-white) 80%, transparent);
+    transition: color 240ms ease;
+  }
+
+  .contact-socials-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-flag-white) 55%, transparent);
+    transition: color 240ms ease;
+  }
+
+  .contact-socials-node:hover .contact-socials-diamond,
+  .contact-socials-node:focus-visible .contact-socials-diamond {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 20%, var(--color-void));
+    scale: 1.08;
+  }
+
+  .contact-socials-node:hover .contact-socials-icon,
+  .contact-socials-node:focus-visible .contact-socials-icon,
+  .contact-socials-node:hover .contact-socials-label,
+  .contact-socials-node:focus-visible .contact-socials-label {
+    color: var(--color-foreground);
+  }
+
+  @media (max-width: 64rem) {
+    .contact-inner {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .contact-aside {
+      gap: 3svh;
+    }
+  }
+
+  .gallery {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 150svh;
+    overflow: clip;
+    scroll-margin-top: 4svh;
+    background: var(--color-void);
+    isolation: isolate;
+  }
+
+  .gallery-row {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+    width: 100%;
+    margin: 1em 0;
+  }
+
+  .gallery-card {
+    position: relative;
+    width: 40%;
+    height: 22.5rem;
+    overflow: hidden;
+    border-radius: 0.75em;
+  }
+
+  .gallery-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .gallery-content {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    translate: -50% -50%;
+  }
+
+  .gallery-logo {
+    width: 9.375rem;
+    height: 9.375rem;
+    overflow: hidden;
+    border: 0.125rem solid var(--color-flag-white);
+    border-radius: 100%;
+    background: var(--color-void);
+  }
+
+  .gallery-logo-metal,
+  .gallery-logo-metal img,
+  .gallery-logo-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  .gallery-logo-metal {
+    position: relative;
+  }
+
+  .gallery-logo-metal img {
+    object-fit: contain;
+    padding: 1.1rem;
+  }
+
+  .gallery-logo-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 0.55rem;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .gallery-logo-metal[data-ready='true'] .gallery-logo-canvas {
+    opacity: 1;
+  }
+
+  .gallery-logo-metal[data-ready='true'] img {
+    opacity: 0;
+  }
+
+  .gallery-headline {
+    position: relative;
+    width: min(92vw, 28rem);
+    height: 4.8rem;
+    margin: 1.4em 0 0.6em;
+  }
+
+  .gallery-headline-text {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 3.4svh, 1.85rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.08em;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--color-foreground);
+  }
+
+  .gallery-headline[data-fx='on'] .gallery-headline-text {
+    color: transparent;
+  }
+
+  .gallery-headline-fx {
+    position: absolute;
+    inset: -55% -18%;
+    z-index: 2;
+    overflow: hidden;
+    mix-blend-mode: screen;
+    pointer-events: auto;
+  }
+
+  .threeui-background {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    isolation: isolate;
+    background: transparent;
+  }
+
+  .threeui-background-frame {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  .gallery-body {
+    position: relative;
+    width: min(92vw, 28rem);
+    margin: 0 0 1.6em;
+    font-family: var(--font-display);
+    font-size: clamp(0.68rem, 1.8svh, 0.92rem);
+    line-height: 1.45;
+    letter-spacing: 0.05em;
+    text-align: center;
+    color: var(--color-muted);
+  }
+
+  .gallery-cta {
+    position: relative;
+    padding: 1em 2em;
+    border: 0.125rem solid var(--color-flag-white);
+    border-radius: 8em;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-flag-white);
+    outline: none;
+    transition:
+      color 220ms ease,
+      border-color 220ms ease,
+      background-color 220ms ease;
+  }
+
+  .gallery-cta:hover,
+  .gallery-cta:focus-visible {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    color: var(--color-foreground);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .gallery-logo {
+      transform: scale(0);
+    }
+
+    .gallery-headline,
+    .gallery-body {
+      transform: translateY(1.875rem);
+      opacity: 0;
+    }
+
+    .gallery-cta {
+      transform: translateY(1.875rem);
+      opacity: 0;
+    }
+  }
+
+  @media (max-width: 56.25rem) {
+    .gallery-card {
+      width: 50%;
+      height: 15rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gallery {
+      height: auto;
+      min-height: 0;
+      padding: 10svh 4vw 12svh;
+    }
+
+    .gallery-content {
+      position: relative;
+      top: auto;
+      left: auto;
+      translate: none;
+    }
+
+    .gallery-card {
+      will-change: auto;
+    }
+
+    .gallery-headline[data-fx='on'] .gallery-headline-text {
+      color: var(--color-foreground);
+    }
+  }
+
+  .gallery-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    background: var(--color-void);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .gallery-overlay[data-open='true'] {
+    pointer-events: auto;
+  }
+
+  .gallery-overlay-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 2.4svh 4vw 1.6svh;
+  }
+
+  .gallery-overlay-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(0.85rem, 2.2svh, 1.15rem);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-foreground);
+  }
+
+  .gallery-overlay-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.55rem;
+  }
+
+  .gallery-overlay-close:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.25rem;
+  }
+
+  .gallery-overlay-x {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .gallery-overlay-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0 4vw 6svh;
+    overflow: auto;
+  }
+
+  .gallery-overlay-item {
+    margin: 0;
+    overflow: hidden;
+    border-radius: 0.75em;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .gallery-overlay-item {
+      opacity: 0;
+    }
+  }
+
+  .gallery-overlay-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  @media (max-width: 64rem) {
+    .gallery-overlay-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .gallery-overlay-grid {
+      grid-template-columns: 1fr;
     }
   }
 }

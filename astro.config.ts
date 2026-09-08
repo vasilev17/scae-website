@@ -24,6 +24,9 @@ export default defineConfig({
   redirects: {
     '/': `/${defaultLocale}/`,
   },
+  devToolbar: {
+    enabled: false,
+  },
   vite: {
     plugins: [tailwindcss()],
     resolve: {
@@ -33,10 +36,12 @@ export default defineConfig({
     },
     // Three.js addons sit outside the main entry, so Vite keeps rediscovering
     // them and 504s the late rocket import as "Outdated Optimize Dep".
+    assetsInclude: ['**/*.glb'],
     optimizeDeps: {
       include: [
         'three',
         '@react-three/fiber',
+        '@react-three/rapier',
         'three/examples/jsm/loaders/GLTFLoader.js',
         'three/examples/jsm/libs/meshopt_decoder.module.js',
       ],

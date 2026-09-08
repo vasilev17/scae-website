@@ -357,6 +357,7 @@ export function LandingHero({
                     if (showStars !== starsOn) {
                       starsOn = showStars;
                       exhibit?.classList.toggle('is-void', showStars);
+                      root.classList.toggle('is-void', showStars);
                       gsap.to(stars, {
                         opacity: showStars ? 1 : 0,
                         duration: STARS_IN,
@@ -424,6 +425,29 @@ export function LandingHero({
                 },
                 0,
               );
+          }
+
+          // The exhibit is a fixed overlay that never scrolls away on its own,
+          // so the contact screen underneath only gets the frame once the
+          // overlay is faded off it. The panel loses its hit area first, or a
+          // still-translucent glass sheet would swallow clicks on the form.
+          const contact = document.querySelector('#contact');
+          if (contact instanceof HTMLElement) {
+            gsap
+              .timeline({
+                scrollTrigger: {
+                  trigger: contact,
+                  start: 'top bottom',
+                  end: 'top 35%',
+                  scrub: true,
+                },
+              })
+              .to('.rocket-exhibit', {
+                autoAlpha: 0,
+                ease: 'none',
+                duration: 1,
+              })
+              .set('.void-panel', { pointerEvents: 'none' }, 0.05);
           }
 
           flyby.eventCallback('onUpdate', () => {

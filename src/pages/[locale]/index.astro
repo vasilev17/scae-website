@@ -6,11 +6,20 @@ import gdbLogo from '@/assets/images/partners/GDB.png';
 import matorLogo from '@/assets/images/partners/MATOR.png';
 import mpLogo from '@/assets/images/partners/MP.png';
 import aboutClubPhoto from '@/assets/images/about/about-the-club.webp';
+import galleryEarth from '@/assets/images/gallery/earth.jpg';
+import galleryExhibit from '@/assets/images/gallery/exhibit.jpg';
+import galleryLaunch from '@/assets/images/gallery/launch.jpg';
+import galleryOrbit from '@/assets/images/gallery/orbit.jpg';
+import galleryVehicle from '@/assets/images/gallery/vehicle.jpg';
+import galleryWorkshop from '@/assets/images/gallery/workshop.jpg';
 import tuLogo from '@/assets/images/partners/TU.png';
 import gateMetal from '@/assets/generated/gate-metal.webp';
 import scaeLogo from '@/assets/generated/scae-logo.webp';
 import contactDot from '@/assets/icons/contact-dot.svg?url';
 import menuGrid from '@/assets/icons/menu-grid.svg?url';
+import { ContactSection } from '@/components/sections/ContactSection';
+import { GallerySection } from '@/components/sections/GallerySection';
+import type { SocialLink } from '@/components/ui/ContactSocials';
 import { LandingHero } from '@/components/ui/LandingHero';
 import { getDictionary, localeStaticPaths, resolveLocale } from '@/i18n';
 import BaseLayout from '@/layouts/BaseLayout.astro';
@@ -28,6 +37,24 @@ const menuItems = [
   { id: 'events', label: t.menu.items.events, href: '#events' },
   { id: 'join', label: t.menu.items.join, href: '#join' },
   { id: 'contact', label: t.menu.items.contact, href: '#contact' },
+];
+
+const socialLinks: SocialLink[] = [
+  {
+    icon: 'linkedin',
+    label: t.contact.socials.linkedin,
+    href: 'https://www.linkedin.com/company/scaebulgaria/',
+  },
+  {
+    icon: 'instagram',
+    label: t.contact.socials.instagram,
+    href: 'https://www.instagram.com/scae.bulgaria/',
+  },
+  {
+    icon: 'email',
+    label: t.contact.socials.email,
+    href: 'mailto:contact@scae.bg',
+  },
 ];
 ---
 
@@ -113,4 +140,54 @@ const menuItems = [
     menu={{ label: t.menu.label, close: t.menu.close, items: menuItems }}
   />
   <div id="after-hero" class="void-ascent" aria-hidden="true"></div>
+  <ContactSection
+    client:visible
+    copy={t.contact}
+    locale={locale}
+    logoSrc={scaeLogo.src}
+    socialLinks={socialLinks}
+  />
+  <GallerySection
+    client:visible={{ rootMargin: '1200px 0px' }}
+    copy={t.gallery}
+    logoSrc={scaeLogo.src}
+    images={[
+      {
+        src: galleryWorkshop.src,
+        alt: t.gallery.alts.workshop,
+        width: galleryWorkshop.width,
+        height: galleryWorkshop.height,
+      },
+      {
+        src: galleryExhibit.src,
+        alt: t.gallery.alts.exhibit,
+        width: galleryExhibit.width,
+        height: galleryExhibit.height,
+      },
+      {
+        src: galleryLaunch.src,
+        alt: t.gallery.alts.launch,
+        width: galleryLaunch.width,
+        height: galleryLaunch.height,
+      },
+      {
+        src: galleryVehicle.src,
+        alt: t.gallery.alts.vehicle,
+        width: galleryVehicle.width,
+        height: galleryVehicle.height,
+      },
+      {
+        src: galleryOrbit.src,
+        alt: t.gallery.alts.orbit,
+        width: galleryOrbit.width,
+        height: galleryOrbit.height,
+      },
+      {
+        src: galleryEarth.src,
+        alt: t.gallery.alts.earth,
+        width: galleryEarth.width,
+        height: galleryEarth.height,
+      },
+    ]}
+  />
 </BaseLayout>
