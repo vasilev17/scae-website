@@ -30,7 +30,10 @@ const canonical = new URL(localeUrl(locale, path), Astro.site ?? Astro.url);
 <html lang={locale} class="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="generator" content={Astro.generator} />
@@ -83,6 +86,28 @@ const canonical = new URL(localeUrl(locale, path), Astro.site ?? Astro.url);
 
       getSmoothScroll();
       if (flags.customCursor) mountCustomCursor();
+    </script>
+    <script>
+      const start = () => {
+        void import('@/lib/analytics').then((mod) => {
+          mod.initAnalytics();
+        });
+      };
+
+      let started = false;
+      const once = () => {
+        if (started) return;
+        started = true;
+        start();
+      };
+
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(once, { timeout: 2500 });
+      } else {
+        setTimeout(once, 1500);
+      }
+      window.addEventListener('pointerdown', once, { once: true, passive: true });
+      window.addEventListener('keydown', once, { once: true });
     </script>
   </body>
 </html>

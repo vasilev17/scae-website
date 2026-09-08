@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type RefObject,
 } from 'react';
 import {
@@ -26,6 +27,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import rocketUrl from '@/assets/generated/rocket.glb?url';
 import { ROCKET_MARK_ENABLED, RocketMark } from '@/components/ui/RocketMark';
 import { RocketStands, STAND_HEIGHT } from '@/components/ui/RocketStand';
+import { qualityBudget, type QualityTier } from '@/lib/quality';
 import {
   EXHIBIT_FILL,
   EXHIBIT_FLOAT_AMP,
@@ -38,6 +40,7 @@ import {
   EXHIBIT_STANDS,
   EXHIBIT_X,
   EXHIBIT_Y,
+  registerRocketInvalidate,
   REST_SECTION,
   type RocketPose,
   type RocketView,
@@ -149,11 +152,19 @@ function FlybyLights() {
   );
 }
 
-function ExhibitRig() {
+type ExhibitRigProps = {
+  // Lightformer environment is a PMREM pass. `medium` and `low` run on the
+  // direct lights alone and lift the fill a little to cover for it.
+  environment: boolean;
+};
+
+function ExhibitRig({ environment }: ExhibitRigProps) {
   return (
     <>
-      <ambientLight intensity={0.2} color="#a8b4c4" />
-      <hemisphereLight args={['#c4d0dc', '#1a1c24', 0.48]} />
+      <ambientLight intensity={environment ? 0.2 : 0.34} color="#a8b4c4" />
+      <hemisphereLight
+        args={['#c4d0dc', '#1a1c24', environment ? 0.48 : 0.6]}
+      />
       {/* Key: same side as the white 2D ray. */}
       <directionalLight
         position={[-2.4, 3.6, 2.6]}
@@ -182,7 +193,7 @@ function ExhibitRig() {
       <directionalLight
         ref={bindCutLight}
         position={[-2.4, 3.6, 2.6]}
-        intensity={0.40}
+        intensity={0.4}
         color="#f4f7fb"
       />
       <directionalLight
@@ -191,27 +202,29 @@ function ExhibitRig() {
         intensity={0.15}
         color="#e8eef6"
       />
-      <Environment resolution={256} environmentIntensity={0.34}>
-        <Lightformer
-          intensity={3.2}
-          rotation-x={Math.PI / 2}
-          position={[0, 5, 0]}
-          scale={[8, 8, 1]}
-          color="#d8e4f2"
-        />
-        <Lightformer
-          intensity={1.6}
-          position={[-4, 2.4, 2]}
-          scale={[3, 5, 1]}
-          color="#f5f8fc"
-        />
-        <Lightformer
-          intensity={1.1}
-          position={[4.5, 1.6, -1]}
-          scale={[2.5, 4, 1]}
-          color="#60a5fa"
-        />
-      </Environment>
+      {environment ? (
+        <Environment resolution={256} environmentIntensity={0.34}>
+          <Lightformer
+            intensity={3.2}
+            rotation-x={Math.PI / 2}
+            position={[0, 5, 0]}
+            scale={[8, 8, 1]}
+            color="#d8e4f2"
+          />
+          <Lightformer
+            intensity={1.6}
+            position={[-4, 2.4, 2]}
+            scale={[3, 5, 1]}
+            color="#f5f8fc"
+          />
+          <Lightformer
+            intensity={1.1}
+            position={[4.5, 1.6, -1]}
+            scale={[2.5, 4, 1]}
+            color="#60a5fa"
+          />
+        </Environment>
+      ) : null}
     </>
   );
 }
@@ -232,9 +245,13 @@ type RocketProps = {
   poseRef: RefObject<RocketPose>;
   view: RocketView;
   sectionRef: RefObject<SectionState>;
+  shadows: boolean;
+  // Time-based bob only makes sense on a continuous loop. On demand the
+  // exhibit parks dead level so a frame is never owed to the clock.
+  bob: boolean;
 };
 
-function Rocket({ poseRef, view, sectionRef }: RocketProps) {
+function Rocket({ poseRef, view, sectionRef, shadows, bob }: RocketProps) {
   const gltf = useLoader(GLTFLoader, rocketUrl, withMeshopt);
   const viewport = useThree((state) => state.viewport);
   const invalidate = useThree((state) => state.invalidate);
@@ -295,7 +312,7 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
     // sits at NOSE_TIP; lift 1 puts it on the viewport origin.
     const restY = -viewport.height * NOSE_TIP;
     if (view === 'exhibit') {
-      if (!EXHIBIT_STANDS) {
+      if (!EXHIBIT_STANDS && bob) {
         const phase =
           (performance.now() / 1000 / EXHIBIT_FLOAT_PERIOD) * Math.PI * 2;
         exhibitFloat.y = Math.sin(phase) * EXHIBIT_FLOAT_AMP;
@@ -339,7 +356,7 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
     if (view === 'exhibit') {
       setCutOpacity(materials, 1 - cut, cut < 0.5);
       if (assembledRef.current) assembledRef.current.visible = cut < 0.999;
-      if (EXHIBIT_SHADOWS) {
+      if (shadows) {
         setShadowOpacity(hullShadowRef.current, SHADOW_OPACITY * (1 - cut));
         setShadowOpacity(cutShadowRef.current, SHADOW_OPACITY * cut);
       }
@@ -356,83 +373,134 @@ function Rocket({ poseRef, view, sectionRef }: RocketProps) {
   return (
     <group ref={groupRef} scale={scale}>
       <group ref={floatRef}>
-      <group ref={tiltRef}>
-        <group ref={bodyRef} position={[0, -height / 2, 0]}>
-          <group ref={assembledRef}>
-            <primitive object={model} />
-          </group>
-          {view === 'exhibit' ? (
-            <Suspense fallback={null}>
-              <ExhibitSection view={view} sectionRef={sectionRef} />
-            </Suspense>
-          ) : null}
-          {ROCKET_MARK_ENABLED ? (
-            <group
-              ref={markGroupRef}
-              onUpdate={(group) => assignLayer(group, EXHIBIT_LAYER_HULL)}
-            >
-              <Suspense fallback={null}>
-                <RocketMark />
-              </Suspense>
+        <group ref={tiltRef}>
+          <group ref={bodyRef} position={[0, -height / 2, 0]}>
+            <group ref={assembledRef}>
+              <primitive object={model} />
             </group>
-          ) : null}
+            {view === 'exhibit' ? (
+              <Suspense fallback={null}>
+                <ExhibitSection view={view} sectionRef={sectionRef} />
+              </Suspense>
+            ) : null}
+            {ROCKET_MARK_ENABLED ? (
+              <group
+                ref={markGroupRef}
+                onUpdate={(group) => assignLayer(group, EXHIBIT_LAYER_HULL)}
+              >
+                <Suspense fallback={null}>
+                  <RocketMark />
+                </Suspense>
+              </group>
+            ) : null}
+          </group>
         </group>
-      </group>
       </group>
       {view === 'exhibit' && EXHIBIT_STANDS ? (
         <RocketStands length={height} />
       ) : null}
-      {view === 'exhibit' && EXHIBIT_SHADOWS ? (
+      {view === 'exhibit' && shadows ? (
         <>
-          <ExhibitShadow
-            shadowRef={hullShadowRef}
-            layer={EXHIBIT_LAYER_HULL}
-          />
-          <ExhibitShadow
-            shadowRef={cutShadowRef}
-            layer={EXHIBIT_LAYER_CUT}
-          />
+          <ExhibitShadow shadowRef={hullShadowRef} layer={EXHIBIT_LAYER_HULL} />
+          <ExhibitShadow shadowRef={cutShadowRef} layer={EXHIBIT_LAYER_CUT} />
         </>
       ) : null}
     </group>
   );
 }
 
+type InvalidateBridgeProps = {
+  running: boolean;
+};
+
+// Hands this canvas's `invalidate` to the pose drivers (GSAP scrub, cut
+// tween, intro entry). Only matters on `demand`, but it is cheap everywhere.
+function InvalidateBridge({ running }: InvalidateBridgeProps) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => registerRocketInvalidate(invalidate), [invalidate]);
+  useEffect(() => {
+    if (running) invalidate();
+  }, [running, invalidate]);
+  return null;
+}
+
 type RocketSceneProps = {
   poseRef: RefObject<RocketPose>;
   view?: RocketView;
   sectionRef?: RefObject<SectionState>;
+  tier: QualityTier;
+  // Page-level "this canvas is worth a frame": the flyby is covered once the
+  // portal closes, the exhibit once the void field is up.
+  running?: boolean;
 };
 
 export function RocketScene({
   poseRef,
   view = 'flyby',
   sectionRef,
+  tier,
+  running = true,
 }: RocketSceneProps) {
   const cutRef = sectionRef ?? { current: REST_SECTION };
+  const budget = qualityBudget(tier);
+  // Context attributes are fixed at creation, so a runtime tier drop keeps
+  // the antialias / preserve settings the boot tier chose. dpr, lights and
+  // the frame loop follow the live tier.
+  const [glAttributes] = useState(() => ({
+    antialias: budget.antialias,
+    alpha: true,
+    // Both readers are `high`-only: the dissolve overlay samples the flyby
+    // canvas, the x-ray samples the exhibit canvas.
+    preserveDrawingBuffer:
+      ROCKET_PORTAL && (view === 'flyby' ? budget.dissolve : budget.exhibitFx),
+  }));
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(true);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setInView(entry?.isIntersecting ?? true);
+    });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
+  const live = running && inView;
+
   return (
-    <Canvas
-      className="h-full w-full"
-      style={{ pointerEvents: 'none' }}
-      frameloop="always"
-      dpr={[1, 2]}
-      gl={{
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: ROCKET_PORTAL,
-      }}
-      camera={{ fov: FOV, position: [0, 0, CAMERA_DISTANCE] }}
-      onCreated={({ gl, camera }) => {
-        gl.toneMapping = ACESFilmicToneMapping;
-        gl.toneMappingExposure = view === 'exhibit' ? 1.0 : 1.2;
-        camera.layers.enable(EXHIBIT_LAYER_HULL);
-        camera.layers.enable(EXHIBIT_LAYER_CUT);
-      }}
-    >
-      {view === 'exhibit' ? <ExhibitRig /> : <FlybyLights />}
-      <Suspense fallback={null}>
-        <Rocket poseRef={poseRef} view={view} sectionRef={cutRef} />
-      </Suspense>
-    </Canvas>
+    <div ref={hostRef} className="h-full w-full">
+      <Canvas
+        className="h-full w-full"
+        style={{ pointerEvents: 'none' }}
+        frameloop={live ? budget.frameloop : 'never'}
+        dpr={budget.dpr}
+        gl={glAttributes}
+        camera={{ fov: FOV, position: [0, 0, CAMERA_DISTANCE] }}
+        onCreated={({ gl, camera }) => {
+          gl.toneMapping = ACESFilmicToneMapping;
+          gl.toneMappingExposure = view === 'exhibit' ? 1.0 : 1.2;
+          camera.layers.enable(EXHIBIT_LAYER_HULL);
+          camera.layers.enable(EXHIBIT_LAYER_CUT);
+        }}
+      >
+        <InvalidateBridge running={live} />
+        {view === 'exhibit' ? (
+          <ExhibitRig environment={budget.environment} />
+        ) : (
+          <FlybyLights />
+        )}
+        <Suspense fallback={null}>
+          <Rocket
+            poseRef={poseRef}
+            view={view}
+            sectionRef={cutRef}
+            shadows={EXHIBIT_SHADOWS && budget.shadows}
+            bob={budget.frameloop === 'always'}
+          />
+        </Suspense>
+      </Canvas>
+    </div>
   );
 }

@@ -99,7 +99,12 @@ export const bg: UiDictionary = {
       messageShort: 'Моля, напиши поне 20 символа',
       messageLong: 'Съобщението е твърде дълго (макс. 2000 символа)',
       generic: 'Възникна грешка. Моля, опитай пак.',
-      alreadySubmitted: 'Вече си изпратил кандидатура.',
+      captchaCancelled: 'Проверката беше прекратена. Моля, опитай пак.',
+      captchaFailed: 'Проверката не успя. Моля, опитай пак.',
+      alreadySubmitted: {
+        general: 'Вече си изпратил съобщение.',
+        application: 'Вече си изпратил кандидатура.',
+      },
     },
     success: {
       general: {

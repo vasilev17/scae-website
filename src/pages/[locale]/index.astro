@@ -15,6 +15,7 @@ import galleryWorkshop from '@/assets/images/gallery/workshop.jpg';
 import tuLogo from '@/assets/images/partners/TU.png';
 import gateMetal from '@/assets/generated/gate-metal.webp';
 import scaeLogo from '@/assets/generated/scae-logo.webp';
+import scaeMark from '@/assets/logos/scae-mark.svg?url';
 import contactDot from '@/assets/icons/contact-dot.svg?url';
 import menuGrid from '@/assets/icons/menu-grid.svg?url';
 import { ContactSection } from '@/components/sections/ContactSection';
@@ -150,7 +151,7 @@ const socialLinks: SocialLink[] = [
   <GallerySection
     client:visible={{ rootMargin: '1200px 0px' }}
     copy={t.gallery}
-    logoSrc={scaeLogo.src}
+    logoSrc={scaeMark}
     images={[
       {
         src: galleryWorkshop.src,

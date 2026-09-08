@@ -23,6 +23,12 @@ interface StarfieldProps {
   // step, so no input, scroll or dropped frame can alter pace or streak
   // length — variable steps are what made the stars flicker pale.
   warpReactive?: boolean;
+  // Off while the field is covered (portal closed, void veil up) so the
+  // canvas owes no frames it cannot show. Back on resumes in place.
+  running?: boolean;
+  // One paint, no loop: the `fallback` tier's static sky. Same path as
+  // reduced motion.
+  frozen?: boolean;
 }
 
 type StarTuple = [
@@ -49,6 +55,11 @@ interface StarfieldData {
   };
 }
 
+type LoopControls = {
+  start: () => void;
+  stop: () => void;
+};
+
 export function Starfield({
   bgColor = 'rgba(0, 0, 0, 1)',
   starColor = 'rgba(255, 255, 255, 1)',
@@ -56,9 +67,13 @@ export function Starfield({
   quantity = 500,
   warpRef,
   warpReactive = true,
+  running = true,
+  frozen = false,
 }: StarfieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const runningRef = useRef(running);
+  const loopRef = useRef<LoopControls | null>(null);
 
   const sd = useRef<StarfieldData>({
     w: 0,
@@ -75,9 +90,8 @@ export function Starfield({
     if (!canvas) return;
 
     const div = canvas.parentElement;
-    const prefersReducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
+    const still =
+      frozen || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const measureViewport = () => {
       if (div) {
@@ -202,15 +216,34 @@ export function Starfield({
       animationFrameRef.current = requestAnimationFrame(loop);
     };
 
+    const stop = () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      // A resumed fixed-step field must not replay the whole pause at once.
+      lastTick = 0;
+      pending = 0;
+    };
+
+    const start = () => {
+      if (still || animationFrameRef.current) return;
+      animationFrameRef.current = requestAnimationFrame(loop);
+    };
+
     sd.current.ctx = canvas.getContext('2d');
     measureViewport();
     initStars();
 
-    if (prefersReducedMotion) {
+    // A frozen field still needs its first projection, or every star sits
+    // on the centre with no streak to draw.
+    if (still) {
+      step(speed, (quantity / 2) * (warpRef?.current.zoom ?? 1));
       draw();
-    } else {
-      animationFrameRef.current = requestAnimationFrame(loop);
+    } else if (runningRef.current) {
+      start();
     }
+    loopRef.current = { start, stop };
 
     const handleResize = () => {
       const oldW = sd.current.w;
@@ -235,7 +268,7 @@ export function Starfield({
         star[4] = sd.current.y + (star[1] / star[2]) * ratio;
       });
 
-      if (prefersReducedMotion) {
+      if (still) {
         draw();
       }
     };
@@ -243,12 +276,17 @@ export function Starfield({
     window.addEventListener('resize', handleResize);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      stop();
+      loopRef.current = null;
       window.removeEventListener('resize', handleResize);
     };
-  }, [bgColor, starColor, speed, quantity, warpRef, warpReactive]);
+  }, [bgColor, starColor, speed, quantity, warpRef, warpReactive, frozen]);
+
+  useEffect(() => {
+    runningRef.current = running;
+    if (running) loopRef.current?.start();
+    else loopRef.current?.stop();
+  }, [running]);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -50,6 +50,9 @@ export function LightningTitle({ text }: LightningTitleProps) {
   }, [motion]);
 
   const showFx = motion === 'ok' && fontFaceCss.length > 0;
+  // The h2 is uppercased by CSS; canvas text is not, so the rasterized mark
+  // has to be uppercased here or the two states read as different titles.
+  const markText = text.toLocaleUpperCase();
 
   return (
     <div className="gallery-headline" data-fx={showFx ? 'on' : 'off'}>
@@ -67,7 +70,7 @@ export function LightningTitle({ text }: LightningTitleProps) {
             saturation={1}
             brightness={1}
             opacity={1}
-            markText={text}
+            markText={markText}
             fontFaceCss={fontFaceCss}
           />
         </div>

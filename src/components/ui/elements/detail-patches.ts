@@ -1,5 +1,12 @@
 // Source: https://threeui.com/source-code/elemental-lightning.json  Adapted: 2026-09-08
 // Authored detail refinements from ElementsBackground.tsx (SHA-256 04dfbb5d8e91).
+//
+// Every shader patch below lands inside a JS template literal in the iframe
+// document (`const FRAG_LIGHTNING = ...`), so a backtick or a ${ } in the
+// replacement text -- a comment included -- closes that literal and takes the
+// whole panel script down with a syntax error. The panel then renders nothing
+// and the headline vanishes silently, because the <h2> behind it is
+// transparent whenever the effect is meant to be on.
 
 export const DETAIL_PATCHES = [
   [
@@ -15,14 +22,33 @@ export const DETAIL_PATCHES = [
     "sim: false, zoom: 1.16, shift: [0, -0.11],",
   ],
   [
+    `  // storm backdrop
+  vec3 col = vec3(0.010, 0.011, 0.024);
+  col += vec3(0.035, 0.04, 0.075) * fbm(pp * 2.2 + vec2(t * 0.04, t * 0.01));`,
+    `  // No storm field. The panel is screen-blended over the page, so a lit
+  // backdrop would read as a glowing rectangle behind the headline rather
+  // than as weather; only what the mark emits should show.
+  vec3 col = vec3(0.0);`,
+  ],
+  [
+    `  float big  = step(0.68, hash21(vec2(slot, 3.7))) * exp(-ph * 16.0);`,
+    `  float big  = step(0.86, hash21(vec2(slot, 3.7))) * exp(-ph * 22.0) * 0.5;`,
+  ],
+  [
     `  float inside = smoothstep(0.005, -0.005, d);
   vec3 body = vec3(0.055, 0.06, 0.10) + big * vec3(0.55, 0.58, 0.85);
   col = mix(col, body, inside);
   float rim = exp(-abs(d) / 0.012) * 0.5;`,
-    `  float inside = smoothstep(0.0025, -0.0025, d);
-  vec3 body = vec3(0.055, 0.06, 0.10) + big * vec3(0.55, 0.58, 0.85);
+    `  // Slightly wider than a hard cut: the fill is bright now, so the contour
+  // needs the extra half pixel to keep the type from crawling.
+  float inside = smoothstep(0.004, -0.004, d);
+  // This is the section's heading before it is weather. Pre-tone-map values:
+  // the panel ends on col / (1 + col * 0.18), so 1.16 is what lands on the
+  // #f4f4f5 the plain <h2> falls back to. Anything that reads as white on the
+  // page has to be over 1 here -- 0.82 came out grey.
+  vec3 body = vec3(1.16, 1.16, 1.19) + big * vec3(0.34, 0.36, 0.55);
   col = mix(col, body, inside);
-  float rim = exp(-abs(d) / 0.0075) * 0.56;`,
+  float rim = exp(-abs(d) / 0.0075) * 0.42;`,
   ],
   [
     `  // fBm zigzag arcs crawling the contour
@@ -42,35 +68,47 @@ export const DETAIL_PATCHES = [
   float e0 = abs(d + n0 * 0.10);
   float corefl = mix(0.25, 1.15, hash21(vec2(floor(t * 9.0), 11.0)));
   col += min(pow(0.0026 * pb / (e0 + 0.0016), 1.6), 8.0) * corefl * vec3(1.0) * fade;`,
-    `  // Layered contour arcs: broad current, hairline filaments, and short-lived forks.
+    `  // Layered contour arcs, held to a trim: three currents instead of five,
+  // struck at roughly half the old rate and capped an order of magnitude
+  // lower, so each one stays a filament rather than blooming past the tone
+  // map into a sheet of white.
   float fade = edgeFade(vUv);
-  for (int i = 0; i < 5; i++){
+  for (int i = 0; i < 3; i++){
     float fi = float(i);
-    float layer = fi / 4.0;
-    float coarse = fbm(pp * mix(4.0, 13.0, layer) + vec2(t * (1.3 + fi * 0.78), fi * 17.7)) - 0.5;
-    float detail = fbm(pp * mix(17.0, 31.0, layer) + vec2(-t * (2.9 + fi * 0.55), fi * 31.7)) - 0.5;
-    float n = coarse * mix(0.82, 0.58, layer) + detail * mix(0.18, 0.42, layer);
-    float e = abs(d + n * mix(0.09, 0.038, layer));
-    float fl = hash21(vec2(floor(t * (7.0 + fi * 3.4)), fi));
-    fl = mix(0.12, 1.0, smoothstep(0.22, 0.94, fl));
-    float width = mix(0.0034, 0.0012, layer);
-    float bolt = pow(width * pb / (e + mix(0.0018, 0.0008, layer)), mix(1.42, 1.78, layer)) * fl;
-    bolt = min(bolt, 7.0);
-    col += bolt * mix(vec3(0.34, 0.39, 1.0), vec3(0.96, 0.94, 1.0), pow(layer, 0.75)) * fade;
+    float layer = fi / 2.0;
+    float coarse = fbm(pp * mix(4.0, 11.0, layer) + vec2(t * (1.2 + fi * 0.8), fi * 17.7)) - 0.5;
+    float detail = fbm(pp * mix(17.0, 29.0, layer) + vec2(-t * (2.6 + fi * 0.5), fi * 31.7)) - 0.5;
+    float n = coarse * mix(0.82, 0.58, layer) + detail * mix(0.18, 0.40, layer);
+    float e = abs(d + n * mix(0.075, 0.034, layer));
+    float fl = hash21(vec2(floor(t * (4.0 + fi * 2.2)), fi));
+    fl = mix(0.06, 0.55, smoothstep(0.40, 0.96, fl));
+    float width = mix(0.0020, 0.0009, layer);
+    float bolt = pow(width * pb / (e + mix(0.0022, 0.0012, layer)), mix(1.45, 1.72, layer)) * fl;
+    bolt = min(bolt, 1.6);
+    col += bolt * mix(vec3(0.34, 0.39, 1.0), vec3(0.82, 0.85, 1.0), pow(layer, 0.75)) * fade;
   }
 
-  // A white primary channel with a displaced secondary fork.
-  float n0 = fbm(pp * 6.5 + vec2(t * 2.8, 7.7)) - 0.5;
-  n0 += (fbm(pp * 23.0 + vec2(-t * 4.1, 18.2)) - 0.5) * 0.22;
-  float e0 = abs(d + n0 * 0.075);
-  float corefl = mix(0.22, 1.2, hash21(vec2(floor(t * 10.0), 11.0)));
-  col += min(pow(0.00175 * pb / (e0 + 0.0009), 1.78), 9.0) * corefl * vec3(1.0) * fade;
-
-  float branchNoise = fbm(pp * 16.0 + vec2(t * 3.7, -13.4)) - 0.5;
-  float branchEdge = abs(d + n0 * 0.052 + branchNoise * 0.026);
-  float branchLife = smoothstep(0.35, 0.92, hash21(vec2(floor(t * 13.0), 23.0)));
-  col += min(pow(0.0011 * pb / (branchEdge + 0.00075), 1.72), 5.0)
-       * branchLife * vec3(0.64, 0.70, 1.0) * fade;`,
+  // One primary channel, dimmed and struck less often than the source's
+  // white-hot core. The forked branch goes with it.
+  float n0 = fbm(pp * 6.0 + vec2(t * 2.4, 7.7)) - 0.5;
+  n0 += (fbm(pp * 21.0 + vec2(-t * 3.6, 18.2)) - 0.5) * 0.2;
+  float e0 = abs(d + n0 * 0.065);
+  float corefl = mix(0.08, 0.5, smoothstep(0.35, 0.95, hash21(vec2(floor(t * 5.0), 11.0))));
+  col += min(pow(0.0014 * pb / (e0 + 0.0016), 1.6), 1.8) * corefl * vec3(0.88, 0.91, 1.0) * fade;`,
+  ],
+  [
+    `  col *= 0.4 + 0.6 * edgeFade(vUv);`,
+    `  // The panel vignette is for the weather, not the type. Left to run over
+  // the mark it dims whichever letters happen to fall near the panel edge,
+  // which on a headline reads as uneven text rather than as falloff.
+  col *= mix(0.4 + 0.6 * edgeFade(vUv), 1.0, inside);`,
+  ],
+  [
+    `  col += big * vec3(0.30, 0.32, 0.55) * (0.25 + 0.75 * inside);`,
+    `  // Sheet flashes light the mark only. Spilling them across the panel lit
+  // the empty field around the headline, which is the one place there is
+  // nothing to light.
+  col += big * vec3(0.30, 0.32, 0.55) * inside;`,
   ],
   [
     `  // thin tongues: x-squashed scrolling fBm, advected progressively with

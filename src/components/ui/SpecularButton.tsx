@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { CSSProperties, MouseEventHandler, ReactNode, Ref } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
 
+import { getQualityTier, qualityBudget } from '@/lib/quality';
+
 export type SpecularButtonProps = {
   ref?: Ref<HTMLButtonElement>;
   children?: ReactNode;
@@ -191,6 +193,9 @@ export function SpecularButton({
     const fx = fxRef.current;
     if (!btn || !fx) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // One WebGL2 context per button is a `high` luxury. Lower tiers keep the
+    // CSS glass and the static stroke from the stylesheet.
+    if (!qualityBudget(getQualityTier()).specular) return;
 
     const dpr = window.devicePixelRatio || 1;
 

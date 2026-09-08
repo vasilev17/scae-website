@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+
 import { ContactBadge } from '@/components/ui/ContactBadge';
 import { ContactForm, type ContactCopy } from '@/components/ui/ContactForm';
 import {
@@ -19,10 +21,15 @@ export function ContactSection({
   logoSrc,
   socialLinks,
 }: ContactSectionProps) {
+  // The badge canvas passes the pointer through, so the section is what hears
+  // the drag: anywhere in here counts as grabbing the badge it is over.
+  const sectionRef = useRef<HTMLElement>(null!);
+
   return (
     <section
       className="contact"
       id="contact"
+      ref={sectionRef}
       aria-labelledby="contact-title"
     >
       <div className="contact-inner">
@@ -42,7 +49,11 @@ export function ContactSection({
           />
         </div>
         <div className="contact-aside">
-          <ContactBadge logoSrc={logoSrc} alt={copy.badge.alt} />
+          <ContactBadge
+            logoSrc={logoSrc}
+            alt={copy.badge.alt}
+            pointerSource={sectionRef}
+          />
           <ContactSocials
             title={copy.socials.title}
             label={copy.socials.label}

@@ -132,6 +132,19 @@
       }
     }
   }
+
+  /* Set while the contact badge is hovered or dragged. Its canvas ignores the
+     pointer, so the grip has to outrank the cursor of whatever element the
+     drag happens to travel over. */
+  html[data-badge-grip='grab'],
+  html[data-badge-grip='grab'] * {
+    cursor: grab !important;
+  }
+
+  html[data-badge-grip='grabbing'],
+  html[data-badge-grip='grabbing'] * {
+    cursor: grabbing !important;
+  }
 }
 
 @layer components {
@@ -280,10 +293,20 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-inline: 1.9792cqw;
+    padding-inline: calc(1.9792cqw + env(safe-area-inset-left))
+      calc(1.9792cqw + env(safe-area-inset-right));
     /* Revealed by GSAP once the panes have travelled out of view. */
     opacity: 0;
     pointer-events: auto;
+  }
+
+  /* Touch: the band's own metrics give ~33px controls on a phone. Hold the
+     44px target without moving the band. */
+  @media (pointer: coarse) {
+    .gate-nav-button {
+      min-height: 2.75rem;
+      padding-inline: 0.9rem;
+    }
   }
 
   /* Box metrics only: SpecularButton paints the glass fill and reads the
@@ -653,6 +676,69 @@
   .hero-rocket > * {
     height: 100%;
     width: 100%;
+  }
+
+  /* No-WebGL stand-in (src/assets/generated/rocket-poster-*.webp). Parked
+     exactly where RocketScene would draw the rocket: flyby nose on the
+     viewport midline (NOSE_TIP 0.5), exhibit 88% wide with the EXHIBIT_X/Y
+     nudge. Height and width auto keep the baked aspect. */
+  .rocket-poster {
+    position: absolute;
+    display: block;
+    max-width: none;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .rocket-poster.rocket-poster--flyby {
+    top: 50%;
+    left: 50%;
+    height: 100%;
+    width: auto;
+    transform: translateX(-50%);
+  }
+
+  .rocket-poster.rocket-poster--exhibit {
+    top: calc(50% - 1.25svh);
+    left: calc(50% + 1.25vw);
+    width: 88%;
+    height: auto;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Tier readout behind flags.qualityDebug. Above the menu (60). */
+  .quality-badge {
+    position: fixed;
+    right: calc(0.75rem + env(safe-area-inset-right));
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    z-index: 70;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-width: 16rem;
+    padding: 0.4rem 0.6rem;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-accent) 40%, transparent);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--color-void) 80%, transparent);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.2;
+    color: var(--color-foreground);
+    pointer-events: none;
+  }
+
+  .quality-badge strong {
+    color: var(--color-accent);
+    text-transform: uppercase;
+  }
+
+  .quality-badge-gpu {
+    flex-basis: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-muted);
   }
 
   /* Portal overlay sits above the gate. Incoming exhibit sits just under it
@@ -1101,7 +1187,7 @@
 
     position: absolute;
     right: 0;
-    bottom: 8.5svh;
+    bottom: calc(8.5svh + env(safe-area-inset-bottom));
     left: 0;
     z-index: 4;
     display: grid;
@@ -1230,6 +1316,51 @@
 
     .rocket-exhibit-caption {
       gap: 0.55svw;
+    }
+  }
+
+  /* Phones: name + cut on the first row, the two rails under it at the
+     edges. One row at 390px put "COMMODORE" and both rails at ~430px. */
+  @media (max-width: 47.9375rem) {
+    .rocket-exhibit-hud {
+      --exhibit-name-size: clamp(1.1rem, 6.4vw, 1.75rem);
+
+      grid-template-columns: 1fr 1fr;
+      row-gap: 1.6svh;
+    }
+
+    .rocket-exhibit-caption {
+      grid-column: 1 / -1;
+      --exhibit-name-size: clamp(1.1rem, 6.4vw, 1.75rem);
+
+      flex-direction: column;
+      gap: 1.2svh;
+    }
+
+    .rocket-exhibit-cut-slot {
+      padding-top: 0;
+    }
+
+    .rocket-exhibit-rail--left {
+      grid-row: 2;
+      grid-column: 1;
+    }
+
+    .rocket-exhibit-rail--right {
+      grid-row: 2;
+      grid-column: 2;
+    }
+
+    .rocket-exhibit-rail .rocket-exhibit-hud-btn {
+      padding-inline: 4vw;
+    }
+  }
+
+  /* Touch: every HUD control at least 44px tall. */
+  @media (pointer: coarse) {
+    .rocket-exhibit-hud-btn,
+    .rocket-exhibit-cut {
+      min-height: 2.75rem;
     }
   }
 
@@ -1570,6 +1701,66 @@
     }
   }
 
+  /* Phones: the cards are the same corners, but shorter and smaller so the
+     diagonal airframe passes between them instead of under them. */
+  @media (max-width: 47.9375rem) {
+    .hold-block {
+      gap: 1svh;
+      max-width: 58vw;
+    }
+
+    .hold-block--challenge {
+      top: calc(11svh + env(safe-area-inset-top));
+      left: calc(5svw + env(safe-area-inset-left));
+    }
+
+    .hold-block--goal {
+      right: calc(5svw + env(safe-area-inset-right));
+      bottom: calc(11svh + env(safe-area-inset-bottom));
+    }
+
+    .hold-title {
+      font-size: clamp(0.85rem, 2.5svh, 1.3rem);
+    }
+
+    .hold-body {
+      font-size: clamp(0.7rem, 1.85svh, 1.05rem);
+    }
+  }
+
+  /* No scrub means no diagonal beat to sit over: the two cards become a
+     plain screen between the hero and the exhibit. Below the gate panes,
+     so the top card starts under the parked top pane. */
+  .is-static .hold-copy {
+    position: relative;
+    inset: auto;
+    z-index: 51;
+    height: 100svh;
+    background: var(--color-void);
+  }
+
+  .is-static .hold-block--challenge {
+    top: calc(18svh + env(safe-area-inset-top));
+  }
+
+  .is-static .hold-block--goal {
+    bottom: calc(12svh + env(safe-area-inset-bottom));
+  }
+
+  @media (scripting: none) {
+    .hold-copy {
+      position: relative;
+      inset: auto;
+      z-index: 51;
+      height: 100svh;
+      background: var(--color-void);
+    }
+
+    .hold-block--challenge {
+      top: calc(18svh + env(safe-area-inset-top));
+    }
+  }
+
   /* Without scripting the panes can never travel, so they are parked at their
      resting positions instead of covering the page. Reduced motion lands here
      too, so those users never see the gate paint over the content.
@@ -1637,7 +1828,9 @@
     display: flex;
     justify-content: center;
     min-height: 100svh;
-    padding: 10svh 4vw 8svh;
+    padding: calc(10svh + env(safe-area-inset-top))
+      calc(4vw + env(safe-area-inset-right)) calc(8svh + env(safe-area-inset-bottom))
+      calc(4vw + env(safe-area-inset-left));
     scroll-margin-top: 4svh;
     background: var(--color-void);
     isolation: isolate;
@@ -1746,6 +1939,12 @@
 
   .contact-tab[aria-selected='true']::after {
     scale: 1 1;
+  }
+
+  @media (pointer: coarse) {
+    .contact-tab {
+      min-height: 2.75rem;
+    }
   }
 
   .contact-form {
@@ -2022,21 +2221,36 @@
     min-width: 0;
   }
 
+  .contact-badge {
+    position: relative;
+    /* Above the socials card, so a dragged badge is never covered by it. */
+    z-index: 2;
+  }
+
   .contact-badge-stage {
     position: relative;
     height: clamp(24rem, 62svh, 42rem);
+    /* Grabbing the badge where it hangs must not scroll the page on touch. */
     touch-action: none;
+  }
+
+  /* The scene renders on a viewport-sized canvas centred on the slot, so a
+     dragged badge stays visible far outside the column it hangs in. It never
+     takes the pointer itself: the section feeds events to the badge mesh. */
+  .contact-badge-field {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100vw;
+    height: 100svh;
+    translate: -50% -50%;
+    pointer-events: none;
   }
 
   .badge-lanyard-canvas {
     display: block !important;
     width: 100% !important;
     height: 100% !important;
-    cursor: grab;
-  }
-
-  .badge-lanyard-canvas:active {
-    cursor: grabbing;
   }
 
   /* Printed stand-in while the scene loads, and the whole badge under
@@ -2233,6 +2447,10 @@
     gap: 2em;
     width: 100%;
     margin: 1em 0;
+    /* Decorative, and they sweep straight across the mark and the button on
+       their way out. Nothing here is clickable, so nothing here should be
+       taking the pointer off what is. */
+    pointer-events: none;
   }
 
   .gallery-card {
@@ -2253,6 +2471,11 @@
     position: absolute;
     top: 45%;
     left: 50%;
+    /* Above the cards. `translate` makes this a stacking context, so an
+       inner z-index cannot lift the mark out on its own -- and while the
+       cards are still gathered they overlap the left and right edges of the
+       circle, painting over the dots and eating the hover there. */
+    z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2260,79 +2483,48 @@
   }
 
   .gallery-logo {
-    width: 9.375rem;
-    height: 9.375rem;
-    overflow: hidden;
+    position: relative;
+    /* The mark scales with this, and it has to: the rocket's tip reaches to
+       within 6% of the ring, so the ring cannot be tightened on its own. */
+    width: 10.5rem;
+    height: 10.5rem;
+  }
+
+  /* The ring is a layer behind the mark rather than a frame around it. As a
+     border on the interactive box it clipped the dots the pointer pushed
+     outward, and its padding left the outer ring of the circle deaf to the
+     pointer -- the hover died exactly where the mark still had dots. */
+  .gallery-logo::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     border: 0.125rem solid var(--color-flag-white);
     border-radius: 100%;
     background: var(--color-void);
-  }
-
-  .gallery-logo-metal,
-  .gallery-logo-metal img,
-  .gallery-logo-canvas {
-    width: 100%;
-    height: 100%;
-  }
-
-  .gallery-logo-metal {
-    position: relative;
-  }
-
-  .gallery-logo-metal img {
-    object-fit: contain;
-    padding: 1.1rem;
-  }
-
-  .gallery-logo-canvas {
-    position: absolute;
-    inset: 0;
-    display: block;
-    padding: 0.55rem;
-    opacity: 0;
     pointer-events: none;
   }
 
-  .gallery-logo-metal[data-ready='true'] .gallery-logo-canvas {
-    opacity: 1;
-  }
-
-  .gallery-logo-metal[data-ready='true'] img {
-    opacity: 0;
-  }
-
-  .gallery-headline {
-    position: relative;
-    width: min(92vw, 28rem);
-    height: 4.8rem;
-    margin: 1.4em 0 0.6em;
-  }
-
-  .gallery-headline-text {
+  .gallery-logo-canvas {
     position: relative;
     z-index: 1;
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: clamp(1.05rem, 3.4svh, 1.85rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: 0.08em;
-    text-align: center;
-    text-transform: uppercase;
-    color: var(--color-foreground);
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
   }
 
-  .gallery-headline[data-fx='on'] .gallery-headline-text {
-    color: transparent;
-  }
-
-  .gallery-headline-fx {
+  /* The section carries no visible heading; this one is here to name it and
+     to keep it in the heading outline. */
+  .gallery-title {
     position: absolute;
-    inset: -55% -18%;
-    z-index: 2;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
     overflow: hidden;
-    mix-blend-mode: screen;
-    pointer-events: auto;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 
   .threeui-background {
@@ -2357,13 +2549,14 @@
   .gallery-body {
     position: relative;
     width: min(92vw, 28rem);
-    margin: 0 0 1.6em;
+    /* Sits straight under the mark now that nothing comes between them. */
+    margin: 1.15em 0 1.6em;
     font-family: var(--font-display);
     font-size: clamp(0.68rem, 1.8svh, 0.92rem);
     line-height: 1.45;
     letter-spacing: 0.05em;
     text-align: center;
-    color: var(--color-muted);
+    color: var(--color-foreground);
   }
 
   .gallery-cta {
@@ -2397,7 +2590,6 @@
       transform: scale(0);
     }
 
-    .gallery-headline,
     .gallery-body {
       transform: translateY(1.875rem);
       opacity: 0;
@@ -2434,9 +2626,6 @@
       will-change: auto;
     }
 
-    .gallery-headline[data-fx='on'] .gallery-headline-text {
-      color: var(--color-foreground);
-    }
   }
 
   .gallery-overlay {

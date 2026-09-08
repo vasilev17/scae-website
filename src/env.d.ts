@@ -20,6 +20,8 @@ interface ImportMetaEnv {
   readonly PUBLIC_FORMSPREE_CONTACT_ID?: string;
   readonly PUBLIC_FORMSPREE_APPLICATION_ID?: string;
   readonly PUBLIC_HCAPTCHA_SITEKEY?: string;
+  readonly PUBLIC_POSTHOG_KEY?: string;
+  readonly PUBLIC_POSTHOG_HOST?: string;
 }
 
 interface ImportMeta {

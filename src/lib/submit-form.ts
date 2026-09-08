@@ -50,7 +50,7 @@ export async function submitForm(
     return { status: 'error', reason: 'network' };
   }
 
-    if (response.ok) return { status: 'ok' };
+  if (response.ok) return { status: 'ok' };
 
   const body: unknown = await response.json().catch(() => null);
   const detail = firstErrorMessage(body);

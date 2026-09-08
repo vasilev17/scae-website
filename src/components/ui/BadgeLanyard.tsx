@@ -3,7 +3,13 @@
 // Rapier rope + spherical card joint, unchanged from upstream: three rope
 // joints of length 1 hang off a fixed anchor, and the card swings from the
 // last one. Camera sits closer than the documented 26 so the badge fills
-// the contact column instead of floating in empty canvas.
+// the contact column instead of floating in empty canvas; ContactBadge
+// scales that distance with the canvas so the framing survives.
+//
+// Upstream drags inside a column-sized canvas, which drops the card as soon
+// as the cursor leaves it. Here the canvas covers the viewport and passes
+// the pointer through, and the contact section feeds it events, so the card
+// can be thrown anywhere on screen while the page stays clickable.
 //
 // Both card faces are printed into the atlas by scripts/build-badge-model.mjs,
 // so there is no runtime compositing. That script must not quantize the mesh:
@@ -29,7 +35,14 @@ import {
   type RigidBodyProps,
 } from '@react-three/rapier';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import {
   CatmullRomCurve3,
   Color,
@@ -68,6 +81,9 @@ type BadgeLanyardProps = {
   running?: boolean;
   lanyardImage?: string | null;
   lanyardWidth?: number;
+  /** Ancestor the scene listens on, since the canvas ignores the pointer. */
+  pointerSource?: RefObject<HTMLElement>;
+  onHoverChange?: (hovered: boolean) => void;
 };
 
 export function BadgeLanyard({
@@ -77,6 +93,8 @@ export function BadgeLanyard({
   running = true,
   lanyardImage = null,
   lanyardWidth = 1,
+  pointerSource,
+  onHoverChange,
 }: BadgeLanyardProps) {
   const [compact, setCompact] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 768,
@@ -92,10 +110,29 @@ export function BadgeLanyard({
     <Canvas
       className="badge-lanyard-canvas"
       camera={{ position, fov }}
-      dpr={[1, compact ? 1.5 : 2]}
+      // The canvas covers the viewport now, so the badge is paid for in far
+      // more pixels than it used to be; density gives way before frames do.
+      dpr={[1, compact ? 1.25 : 1.75]}
       frameloop={running ? 'always' : 'never'}
+      eventSource={pointerSource}
       gl={{ alpha: true }}
-      onCreated={({ gl }) => gl.setClearColor(new Color(0x000000), 0)}
+      onCreated={(state) => {
+        state.gl.setClearColor(new Color(0x000000), 0);
+        // Events arrive from the section, so the default offsetX/offsetY is
+        // measured against whichever element the pointer happens to be over.
+        // Re-base on the canvas rect, which stays right off the canvas too.
+        state.setEvents({
+          compute(event, root) {
+            const rect = root.gl.domElement.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            root.pointer.set(
+              ((event.clientX - rect.left) / rect.width) * 2 - 1,
+              -((event.clientY - rect.top) / rect.height) * 2 + 1,
+            );
+            root.raycaster.setFromCamera(root.pointer, root.camera);
+          },
+        });
+      }}
     >
       <ambientLight intensity={Math.PI} />
       <Suspense fallback={null}>
@@ -108,6 +145,7 @@ export function BadgeLanyard({
             compact={compact}
             lanyardImage={lanyardImage}
             lanyardWidth={lanyardWidth}
+            onHoverChange={onHoverChange}
           />
         </Physics>
       </Suspense>
@@ -151,6 +189,7 @@ type BandProps = {
   compact: boolean;
   lanyardImage?: string | null;
   lanyardWidth?: number;
+  onHoverChange?: (hovered: boolean) => void;
 };
 
 type LanyardBody = RapierRigidBody & {
@@ -163,6 +202,7 @@ function Band({
   compact,
   lanyardImage = null,
   lanyardWidth = 1,
+  onHoverChange,
 }: BandProps) {
   const band = useRef<
     Mesh<
@@ -226,10 +266,17 @@ function Band({
   ]);
 
   useEffect(() => {
-    if (!hovered) return;
-    document.body.style.cursor = dragged ? 'grabbing' : 'grab';
+    onHoverChange?.(hovered);
+  }, [hovered, onHoverChange]);
+
+  // The grip belongs to the card, not to the canvas around it, and it has to
+  // survive a drag crossing text fields and links, so it rides on <html>.
+  useEffect(() => {
+    if (!hovered && !dragged) return;
+    const root = document.documentElement;
+    root.dataset.badgeGrip = dragged ? 'grabbing' : 'grab';
     return () => {
-      document.body.style.cursor = 'auto';
+      delete root.dataset.badgeGrip;
     };
   }, [hovered, dragged]);
 
@@ -306,17 +353,14 @@ function Band({
             onPointerOver={() => hover(true)}
             onPointerOut={() => hover(false)}
             onPointerUp={(event: ThreeEvent<PointerEvent>) => {
-              if (event.target instanceof Element) {
-                event.target.releasePointerCapture(event.pointerId);
-              }
+              grip(event).releasePointerCapture(event.pointerId);
               drag(false);
             }}
+            onPointerCancel={() => drag(false)}
             onPointerDown={(event: ThreeEvent<PointerEvent>) => {
-              if (event.target instanceof Element) {
-                event.target.setPointerCapture(event.pointerId);
-              }
               const body = card.current;
               if (!body) return;
+              grip(event).setPointerCapture(event.pointerId);
               drag(
                 new Vector3()
                   .copy(event.point)
@@ -357,6 +401,20 @@ function Band({
       </mesh>
     </>
   );
+}
+
+type PointerCapture = {
+  setPointerCapture: (id: number) => void;
+  releasePointerCapture: (id: number) => void;
+};
+
+/**
+ * R3F swaps `target` for a capture shim it never reflects in the DOM event
+ * type the handler inherits. Capturing through it hands the pointer to the
+ * canvas, so the card keeps the grip once the cursor leaves it.
+ */
+function grip(event: ThreeEvent<PointerEvent>): PointerCapture {
+  return event.target as unknown as PointerCapture;
 }
 
 function getLerped(body: LanyardBody): Vector3 {

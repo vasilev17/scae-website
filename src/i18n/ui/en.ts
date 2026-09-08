@@ -96,7 +96,13 @@ export const en = {
       messageShort: 'Please write at least 20 characters',
       messageLong: 'Message is too long (max 2000 chars)',
       generic: 'Something went wrong. Please try again.',
-      alreadySubmitted: 'You have already submitted an application.',
+      captchaCancelled: 'The captcha was closed. Please try again.',
+      captchaFailed:
+        'The captcha could not be completed. Please try again.',
+      alreadySubmitted: {
+        general: 'You have already sent us a message.',
+        application: 'You have already submitted an application.',
+      },
     },
     success: {
       general: {

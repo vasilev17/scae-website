@@ -13,7 +13,12 @@ import {
   type PartnerLogo,
 } from '@/components/ui/PartnersMarquee';
 import { Starfield } from '@/components/ui/Starfield';
-import { EXHIBIT_ROCKET_POSE, REST_SECTION } from '@/lib/rocket';
+import {
+  EXHIBIT_ROCKET_POSE,
+  invalidateRocketScenes,
+  REST_SECTION,
+} from '@/lib/rocket';
+import { useQualityBudget } from '@/lib/use-quality-tier';
 import { cn } from '@/lib/utils';
 
 type RocketExhibitProps = {
@@ -24,6 +29,10 @@ type RocketExhibitProps = {
   groundLabel: string;
   fxLabel: string;
   fx: boolean;
+  // The exhibit canvas is worth a frame from the zoom until the void field
+  // covers it. The field runs only once it is up.
+  rocketRunning: boolean;
+  starsRunning: boolean;
   partnersTitle: string;
   partnersAria: string;
   partnerLogos: PartnerLogo[];
@@ -75,6 +84,8 @@ export function RocketExhibit({
   groundLabel,
   fxLabel,
   fx,
+  rocketRunning,
+  starsRunning,
   partnersTitle,
   partnersAria,
   partnerLogos,
@@ -88,6 +99,7 @@ export function RocketExhibit({
   const poseRef = useRef({ ...EXHIBIT_ROCKET_POSE });
   const sectionRef = useRef({ ...REST_SECTION });
   const [cutOpen, setCutOpen] = useState(false);
+  const budget = useQualityBudget();
 
   useEffect(
     () => () => {
@@ -103,12 +115,14 @@ export function RocketExhibit({
       cut: next ? 1 : 0,
       duration: 0.4,
       ease: 'power2.inOut',
+      // `low` renders on demand, so the crossfade has to ask for its frames.
+      onUpdate: invalidateRocketScenes,
     });
   };
 
   return (
     <div className="rocket-exhibit" role="region" aria-label={fxLabel}>
-      <BackgroundRippleEffect cellSize={64} />
+      {budget.ripple ? <BackgroundRippleEffect cellSize={64} /> : null}
       <div className="rocket-exhibit-spotlights" aria-hidden="true">
         <Spotlight
           className="-top-24 left-[12%] md:-top-4 md:left-[20%]"
@@ -124,9 +138,18 @@ export function RocketExhibit({
         </div>
       </div>
       <div className="rocket-exhibit-stage" aria-hidden="true">
-        <HeroRocket poseRef={poseRef} view="exhibit" sectionRef={sectionRef} />
+        {/* `high` keeps the canvas warm for the whole session. Lower tiers
+            only hold a context while the exhibit can actually be seen. */}
+        {budget.dissolve || rocketRunning ? (
+          <HeroRocket
+            poseRef={poseRef}
+            view="exhibit"
+            sectionRef={sectionRef}
+            running={rocketRunning}
+          />
+        ) : null}
       </div>
-      {fx && !cutOpen ? <ExhibitFx /> : null}
+      {fx && !cutOpen && budget.exhibitFx ? <ExhibitFx /> : null}
       <h2 className="rocket-exhibit-work">
         <span>{work}</span>
       </h2>
@@ -176,23 +199,27 @@ export function RocketExhibit({
           bgColor="rgba(0, 0, 0, 1)"
           starColor="rgba(255, 255, 255, 1)"
           speed={0.9}
-          quantity={320}
+          quantity={budget.voidStars || 80}
           warpReactive={false}
+          running={starsRunning}
+          frozen={budget.voidStars === 0}
         />
       </div>
       <div className="void-content">
         <div className="void-backglow" aria-hidden="true" />
         <div className="void-panel" data-flicker-host>
-          <div className="void-panel-grid" aria-hidden="true">
-            <FlickeringGrid
-              squareSize={3}
-              gridGap={10}
-              maxOpacity={0.2}
-              flickerChance={0.16}
-              majorEvery={7}
-              interactive
-            />
-          </div>
+          {budget.flicker ? (
+            <div className="void-panel-grid" aria-hidden="true">
+              <FlickeringGrid
+                squareSize={3}
+                gridGap={10}
+                maxOpacity={0.2}
+                flickerChance={0.16}
+                majorEvery={7}
+                interactive
+              />
+            </div>
+          ) : null}
           <div className="void-panel-backlight" aria-hidden="true" />
           <div className="void-panel-body">
             <h2 className="void-partners-title">

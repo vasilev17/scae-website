@@ -4,9 +4,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 
 import { GalleryOverlay } from '@/components/ui/GalleryOverlay';
-import { LightningTitle } from '@/components/ui/LightningTitle';
-import { LiquidMetalLogo } from '@/components/ui/LiquidMetalLogo';
+import { PixelatedCanvas } from '@/components/ui/PixelatedCanvas';
 import type { UiDictionary } from '@/i18n/ui/en';
+import { useQualityBudget } from '@/lib/use-quality-tier';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -79,6 +79,10 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
   const [overlayMounted, setOverlayMounted] = useState(false);
   const [origin, setOrigin] = useState<OverlayOrigin>({ x: 0, y: 0 });
   const rows = pairImages(images);
+  // Below the top tier the mark is painted once and left alone: the dot loop
+  // repaints several thousand arcs a frame for a hover nobody on a phone can
+  // perform anyway.
+  const budget = useQualityBudget();
 
   const closeTimer = useRef(0);
 
@@ -115,7 +119,6 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
         (context) => {
           if (context.conditions?.reduce) {
             gsap.set('.gallery-logo', { scale: 1 });
-            gsap.set('.gallery-headline', { y: 0, autoAlpha: 1 });
             gsap.set('.gallery-body', { y: 0, autoAlpha: 1 });
             gsap.set('.gallery-cta', { y: 0, autoAlpha: 1 });
             return;
@@ -165,12 +168,6 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
               0,
             )
             .fromTo(
-              '.gallery-headline',
-              { y: 30, autoAlpha: 0 },
-              { y: 0, autoAlpha: 1, duration: 0.5, ease: 'power1.out' },
-              0,
-            )
-            .fromTo(
               '.gallery-body',
               { y: 30, autoAlpha: 0 },
               { y: 0, autoAlpha: 1, duration: 0.5, ease: 'power1.out' },
@@ -197,9 +194,38 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
     >
       <div className="gallery-content">
         <div className="gallery-logo">
-          <LiquidMetalLogo src={logoSrc} alt={copy.logoAlt} />
+          <PixelatedCanvas
+            src={logoSrc}
+            alt={copy.logoAlt}
+            className="gallery-logo-canvas"
+            responsive
+            cellSize={3}
+            dotScale={0.9}
+            shape="circle"
+            dropoutStrength={0}
+            interactive={budget.pixelLoop}
+            imageScale={0.78}
+            // The emblem's navy disc -- the shape the eye centres on inside
+            // the ring -- sits 2.4% right and 0.9% high of the middle of its
+            // own file. This puts it back in the middle of the circle.
+            imageOffsetX={-0.024}
+            imageOffsetY={0.009}
+            distortionStrength={1.5}
+            distortionRadius={18}
+            distortionMode="repel"
+            followSpeed={0.2}
+            jitterStrength={budget.pixelLoop ? 7.5 : 0}
+            jitterSpeed={4}
+            sampleAverage
+            objectFit="contain"
+            tintStrength={0.15}
+          />
         </div>
-        <LightningTitle text={copy.headline} />
+        {/* No visible heading here by design, but the section still needs a
+            name and a place in the heading outline. */}
+        <h2 className="gallery-title" id="gallery-title">
+          {copy.title}
+        </h2>
         <p className="gallery-body">{copy.body}</p>
         <div className="gallery-btn">
           <button

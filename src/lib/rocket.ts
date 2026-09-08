@@ -14,6 +14,22 @@ export type RocketPose = {
   explode: number;
 };
 
+// `low` renders on demand. Whoever moves the pose (GSAP scrub, cut tween,
+// intro entry) pokes every mounted scene through here rather than holding an
+// R3F handle outside the canvas.
+const invalidators = new Set<() => void>();
+
+export function registerRocketInvalidate(fn: () => void): () => void {
+  invalidators.add(fn);
+  return () => {
+    invalidators.delete(fn);
+  };
+}
+
+export function invalidateRocketScenes() {
+  for (const fn of invalidators) fn();
+}
+
 export const REST_ROCKET_POSE: RocketPose = {
   lift: 0,
   tilt: 0,

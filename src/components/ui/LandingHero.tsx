@@ -12,9 +12,12 @@ import { GateFrame } from '@/components/ui/GateFrame';
 import { GateNav } from '@/components/ui/GateNav';
 import { HeroRocket } from '@/components/ui/HeroRocket';
 import { type PartnerLogo } from '@/components/ui/PartnersMarquee';
+import { QualityBadge } from '@/components/ui/QualityBadge';
 import { RocketExhibit } from '@/components/ui/RocketExhibit';
 import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
 import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
+import { setAnalyticsContext, track } from '@/lib/analytics';
+import { flags } from '@/lib/flags';
 import {
   GATE_CRACK_TRAVEL,
   GATE_INTERIOR_DELAY,
@@ -24,6 +27,16 @@ import {
   readGateGeometry,
 } from '@/lib/gate';
 import {
+  downgradeQualityTier,
+  FPS_FLOOR,
+  getQualityResolution,
+  getQualityTier,
+  qualityBudget,
+  sampleFps,
+  type QualityTier,
+} from '@/lib/quality';
+import {
+  invalidateRocketScenes,
   REST_ROCKET_POSE,
   ROCKET_FLY_SPIN,
   ROCKET_FLY_TILT,
@@ -36,6 +49,7 @@ import {
   startInternalRaf,
   stopInternalRaf,
 } from '@/lib/smooth-scroll';
+import { useQualityTier } from '@/lib/use-quality-tier';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -136,6 +150,7 @@ const EXPLODE_DURATION = 0.45;
 // Timeline units after explode starts. 0 = hole with the first crack.
 // Bigger = later hole. 0.12 ≈ parts already a little apart.
 const DISSOLVE_DELAY = 0.075;
+const DISSOLVE_AT = HOLD_END + DISSOLVE_DELAY;
 // Rails start once the hole has begun. Rays wait — their bloom sits at
 // the top, still covered if they share the rail lag.
 const RAIL_SLIDE_LAG = 0.18;
@@ -145,6 +160,21 @@ const RAIL_SLIDE_DURATION = 0.45;
 // Pin length: first-title zoom matches pre-hold (311% at duration 1.706).
 // Lock is 2.58, so 365 * 2.58 / 2 ≈ 471. Hold knobs do not touch this.
 const SCROLL_LENGTH = '+=471%';
+// Phones: same beats, a fifth less thumb travel. The hold copy is smaller
+// there, so the phase needs less distance to stay readable.
+const SCROLL_LENGTH_NARROW = '+=380%';
+const NARROW_QUERY = '(max-width: 767px)';
+
+// Exhibit canvas and (on `high`) the dissolve context warm up here, well
+// before the hole opens at DISSOLVE_AT.
+const EXHIBIT_WARM_AT = ZOOM_DURATION * 0.5;
+
+// Static path (reduced motion, or no WebGL): plain toggles on the ascent
+// spacer stand in for the pinned scrub. Marks are viewport positions of the
+// spacer's top edge.
+const STATIC_EXHIBIT_START = 'top 35%';
+const STATIC_VOID_START = 'top -15%';
+const STATIC_CONTACT_START = 'top 60%';
 
 // Void ascent, after the pin. Units are that timeline's own clock.
 // Rails travel 100vw with power2.in, so they clip off-screen around
@@ -176,6 +206,26 @@ const ROCKET_ENTRY_DURATION = 1.4;
 const DOOR_DURATION = 0.9;
 // Head start the dial's flicker-out gets before the gate reopens.
 const MENU_EXIT = 0.45;
+
+type ScrollPhase = 'intro' | 'flyby' | 'hold' | 'dissolve' | 'exhibit';
+
+// Once per page load, first time each phase is reached.
+const firedPhases = new Set<ScrollPhase>();
+
+function markPhase(phase: ScrollPhase) {
+  if (firedPhases.has(phase)) return;
+  firedPhases.add(phase);
+  track('scroll_phase', { phase });
+}
+
+// Which canvases deserve a frame right now. Written from scroll callbacks,
+// folded into React state only on change.
+type LiveState = {
+  // Exhibit canvas warmed (zoom started) / portal fully open / void field up.
+  warm: boolean;
+  done: boolean;
+  isVoid: boolean;
+};
 
 export function LandingHero({
   metalSrc,
@@ -223,6 +273,86 @@ export function LandingHero({
   const [menuOpen, setMenuOpen] = useState(false);
   const [exhibitFx, setExhibitFx] = useState(false);
   const flybyRef = useRef<gsap.core.Timeline | null>(null);
+
+  const tier = useQualityTier();
+  const budget = qualityBudget(tier);
+  // Read by scroll callbacks built once: a runtime tier drop swaps the shader
+  // hole for the crossfade without rebuilding the timeline.
+  const overlayOn = useRef(budget.dissolve);
+  useEffect(() => {
+    overlayOn.current = budget.dissolve;
+  }, [budget.dissolve]);
+
+  const live = useRef<LiveState>({ warm: false, done: false, isVoid: false });
+  const [flybyLive, setFlybyLive] = useState(true);
+  const [exhibitLive, setExhibitLive] = useState(false);
+  const [voidLive, setVoidLive] = useState(false);
+  const [portalLive, setPortalLive] = useState(false);
+  const syncLive = () => {
+    const { warm, done, isVoid } = live.current;
+    setFlybyLive(!done && !isVoid);
+    setExhibitLive(warm && !isVoid);
+    setVoidLive(isVoid);
+    setPortalLive(warm && !done && !isVoid);
+  };
+
+  /**
+   * Boot classification is reported once, with the raw signals, so the
+   * tier distribution of real visitors can be read back later.
+   */
+  useEffect(() => {
+    const quality = getQualityResolution();
+    setAnalyticsContext({ quality_tier: quality.tier });
+    track('quality_tier_resolved', {
+      tier: quality.tier,
+      score: quality.score,
+      source: quality.source,
+      override: quality.source === 'query' || quality.source === 'session',
+      renderer: quality.renderer,
+      narrow: quality.signals.narrow,
+      coarse: quality.signals.coarse,
+      memory_gb: quality.signals.memoryGb,
+      cores: quality.signals.cores,
+      slow_net: quality.signals.slowNet,
+      software_gl: quality.signals.softwareGl,
+      small_texture: quality.signals.smallTexture,
+    });
+    if (quality.tier === 'fallback') {
+      track('quality_fallback', {
+        reason: quality.source === 'auto' ? 'no-webgl' : 'override',
+      });
+    }
+    markPhase('intro');
+  }, []);
+
+  /**
+   * Runtime adaptation: once the gate is open and the scene is up, count
+   * frames for a short window. Below the floor the tier drops one step; a
+   * second window on the new tier may drop it once more. Never up, never to
+   * the poster.
+   */
+  const probed = useRef<QualityTier | null>(null);
+  useEffect(() => {
+    if (!introDone || probed.current === tier) return;
+    if (tier !== 'high' && tier !== 'medium') return;
+    // A forced tier is the measurement, not a candidate for retuning.
+    if (getQualityResolution().source === 'query') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    probed.current = tier;
+
+    let cancelled = false;
+    void sampleFps().then((fps) => {
+      if (cancelled || fps === null || fps >= FPS_FLOOR) return;
+      const from = getQualityTier();
+      const to = downgradeQualityTier(fps);
+      if (!to) return;
+      setAnalyticsContext({ quality_tier: to });
+      track('quality_tier_changed', { from, to, fps: Math.round(fps) });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [introDone, tier]);
 
   /**
    * One frame loop for the page: Lenis moves the scroll and ScrollTrigger reads
@@ -286,7 +416,23 @@ export function LandingHero({
           animate: '(prefers-reduced-motion: no-preference)',
         },
         (context) => {
-          if (context.conditions?.reduce) {
+          // No WebGL means a poster instead of a rocket, and a poster has no
+          // flyby to scrub. It takes the same end-state layout as reduced
+          // motion. Read once: the tier at boot is what the timeline is
+          // built for, and a runtime drop never lands on `fallback`.
+          const staticPath =
+            context.conditions?.reduce === true ||
+            getQualityTier() === 'fallback';
+          // Stylesheet hook: the hold copy becomes a screen in the flow.
+          root.classList.toggle('is-static', staticPath);
+
+          const exhibit = root.querySelector('.rocket-exhibit');
+          const stars = root.querySelector('.void-stars');
+          const content = root.querySelector('.void-content');
+          const ascent = document.querySelector('.void-ascent');
+          const contact = document.querySelector('#contact');
+
+          if (staticPath) {
             gsap.set('.gate-pane-group', {
               yPercent: perGatePane(geometry.restTop, geometry.restBottom),
               willChange: 'auto',
@@ -297,6 +443,66 @@ export function LandingHero({
             gsap.set('.landing-copy', { autoAlpha: 1 });
             gsap.set('.hold-copy', { autoAlpha: 1, scale: 1 });
             gsap.set('.hero-rocket', { yPercent: 0 });
+
+            // The exhibit still has to arrive, or About and Partners are
+            // unreachable without motion. Rails and rays sit in their
+            // arrived pose and the overlay simply switches on past the
+            // hero, then goes void, then yields to the contact screen.
+            if (!(exhibit instanceof HTMLElement)) return;
+            if (!(ascent instanceof HTMLElement)) return;
+            gsap.set('.rocket-exhibit-rail--left, .rocket-exhibit-rail--right', {
+              x: 0,
+              xPercent: 0,
+            });
+            gsap.set('.rocket-exhibit-ray', {
+              opacity: 1,
+              xPercent: -50,
+              yPercent: -40,
+              scale: 1,
+            });
+            gsap.set(exhibit, { autoAlpha: 0 });
+
+            ScrollTrigger.create({
+              trigger: ascent,
+              start: STATIC_EXHIBIT_START,
+              end: 'max',
+              onToggle: (self) => {
+                gsap.set(exhibit, { autoAlpha: self.isActive ? 1 : 0 });
+                exhibit.classList.toggle('is-live', self.isActive);
+                live.current.warm = self.isActive;
+                live.current.done = self.isActive;
+                if (self.isActive) markPhase('exhibit');
+                syncLive();
+              },
+            });
+            ScrollTrigger.create({
+              trigger: ascent,
+              start: STATIC_VOID_START,
+              end: 'max',
+              onToggle: (self) => {
+                exhibit.classList.toggle('is-void', self.isActive);
+                root.classList.toggle('is-void', self.isActive);
+                if (stars) gsap.set(stars, { opacity: self.isActive ? 1 : 0 });
+                if (content) {
+                  gsap.set(content, { opacity: self.isActive ? 1 : 0, y: 0 });
+                }
+                live.current.isVoid = self.isActive;
+                syncLive();
+              },
+            });
+            if (contact instanceof HTMLElement) {
+              ScrollTrigger.create({
+                trigger: contact,
+                start: STATIC_CONTACT_START,
+                end: 'max',
+                onToggle: (self) => {
+                  gsap.set(exhibit, { autoAlpha: self.isActive ? 0 : 1 });
+                  gsap.set('.void-panel', {
+                    pointerEvents: self.isActive ? 'none' : 'auto',
+                  });
+                },
+              });
+            }
             return;
           }
 
@@ -310,6 +516,13 @@ export function LandingHero({
             transformOrigin: '50% 50%',
           });
           gsap.set('.hero-rocket', { yPercent: ROCKET_ENTRY });
+          if (exhibit) gsap.set(exhibit, { opacity: 0 });
+
+          // Read once, not a matchMedia condition: a condition would revert
+          // and replay the whole intro on every resize across the breakpoint.
+          const scrollLength = window.matchMedia(NARROW_QUERY).matches
+            ? SCROLL_LENGTH_NARROW
+            : SCROLL_LENGTH;
 
           // Built first so the intro can hand over to it, but held inert until
           // then: a live pin would fight the opening animation.
@@ -317,10 +530,20 @@ export function LandingHero({
             scrollTrigger: {
               trigger: hero,
               start: 'top top',
-              end: SCROLL_LENGTH,
+              end: scrollLength,
               pin: true,
               pinSpacing: true,
               scrub: 1,
+              // Everything below the hero is pushed down by this pin's
+              // spacing, and ScrollTrigger only credits that offset to
+              // triggers that sit earlier in its list — which is creation
+              // order. Islands hydrate whenever their chunk lands, so a
+              // section further down the page (the gallery) can register
+              // first and then measure itself ~471vh too high, running its
+              // scrub while it is still off screen. Declaring a priority
+              // switches ScrollTrigger to sorting by document position on
+              // every refresh, so this pin is always accounted for first.
+              refreshPriority: 1,
               onToggle: (self) =>
                 gsap.set('.gate-pane-group, .hero-interior, .hold-copy', {
                   willChange: self.isActive ? 'transform' : 'auto',
@@ -329,9 +552,6 @@ export function LandingHero({
           });
           flyby.scrollTrigger?.disable();
 
-          const ascent = document.querySelector('.void-ascent');
-          const stars = root.querySelector('.void-stars');
-          const content = root.querySelector('.void-content');
           if (ascent instanceof HTMLElement && stars instanceof HTMLElement) {
             const rise = () => window.innerHeight * CONTENT_RISE;
             gsap.set(stars, { opacity: 0 });
@@ -341,7 +561,6 @@ export function LandingHero({
             // Cover is a fraction of the veil climb. Fade is time-based, not
             // scrubbed: reversing the wheel must not rewind the field.
             const cover = STARS_AT / VEIL_RISE;
-            const exhibit = root.querySelector('.rocket-exhibit');
             let starsOn = false;
             let contentOn = false;
             gsap
@@ -358,6 +577,8 @@ export function LandingHero({
                       starsOn = showStars;
                       exhibit?.classList.toggle('is-void', showStars);
                       root.classList.toggle('is-void', showStars);
+                      live.current.isVoid = showStars;
+                      syncLive();
                       gsap.to(stars, {
                         opacity: showStars ? 1 : 0,
                         duration: STARS_IN,
@@ -431,7 +652,6 @@ export function LandingHero({
           // so the contact screen underneath only gets the frame once the
           // overlay is faded off it. The panel loses its hit area first, or a
           // still-translucent glass sheet would swallow clicks on the form.
-          const contact = document.querySelector('#contact');
           if (contact instanceof HTMLElement) {
             gsap
               .timeline({
@@ -450,11 +670,32 @@ export function LandingHero({
               .set('.void-panel', { pointerEvents: 'none' }, 0.05);
           }
 
+          const setExhibitOpacity =
+            exhibit instanceof HTMLElement
+              ? gsap.quickSetter(exhibit, 'opacity')
+              : null;
           flyby.eventCallback('onUpdate', () => {
-            root.querySelector('.rocket-exhibit')?.classList.toggle(
+            const time = flyby.time();
+            const dissolve = portal.current.dissolve;
+            exhibit?.classList.toggle(
               'is-live',
-              flyby.time() >= HOLD_OUT_AT + HOLD_OUT,
+              time >= HOLD_OUT_AT + HOLD_OUT,
             );
+            // With the shader hole the exhibit sits fully painted under the
+            // overlay from the zoom on, so its first frame is paid early.
+            // Without it, the exhibit crossfades over the flyby on the
+            // dissolve clock instead.
+            setExhibitOpacity?.(
+              overlayOn.current ? (time >= ZOOM_DURATION ? 1 : 0) : dissolve,
+            );
+            if (time > 0) markPhase('flyby');
+            if (time >= HOLD_START) markPhase('hold');
+            if (time >= DISSOLVE_AT) markPhase('dissolve');
+            if (dissolve >= 0.999) markPhase('exhibit');
+            live.current.warm = time >= EXHIBIT_WARM_AT;
+            live.current.done = dissolve >= 0.999;
+            syncLive();
+            invalidateRocketScenes();
           });
           flybyRef.current = flyby;
 
@@ -552,9 +793,8 @@ export function LandingHero({
           }
 
           if (ROCKET_PORTAL) {
-            const dissolveAt = HOLD_END + DISSOLVE_DELAY;
-            const railsAt = dissolveAt + EXPLODE_DURATION * RAIL_SLIDE_LAG;
-            const raysAt = dissolveAt + EXPLODE_DURATION * RAY_SLIDE_LAG;
+            const railsAt = DISSOLVE_AT + EXPLODE_DURATION * RAIL_SLIDE_LAG;
+            const raysAt = DISSOLVE_AT + EXPLODE_DURATION * RAY_SLIDE_LAG;
             const leftRail = '.rocket-exhibit-rail--left';
             const rightRail = '.rocket-exhibit-rail--right';
             const rays = '.rocket-exhibit-ray';
@@ -576,16 +816,9 @@ export function LandingHero({
             // first title are gone (ZOOM_DURATION). Overlay at dissolve 0
             // still looks like the flyby; hold-copy sits above it (z 56).
             // Explode / hole then only tween uniforms — no first paint.
-            flyby.set(
-              '.rocket-exhibit, .dissolve-overlay',
-              { opacity: 0 },
-              0,
-            );
-            flyby.set(
-              '.rocket-exhibit, .dissolve-overlay',
-              { opacity: 1 },
-              ZOOM_DURATION,
-            );
+            // The exhibit's own opacity is driven from onUpdate above.
+            flyby.set('.dissolve-overlay', { opacity: 0 }, 0);
+            flyby.set('.dissolve-overlay', { opacity: 1 }, ZOOM_DURATION);
             flyby.set(leftRail, { xPercent: 0, x: '-100vw' }, 0);
             flyby.set(rightRail, { xPercent: 0, x: '100vw' }, 0);
             flyby.set(rays, rayOff, 0);
@@ -625,7 +858,7 @@ export function LandingHero({
             flyby.to(
               portal.current,
               { dissolve: 1, ease: 'none', duration: EXPLODE_DURATION },
-              dissolveAt,
+              DISSOLVE_AT,
             );
           }
 
@@ -640,6 +873,8 @@ export function LandingHero({
 
           gsap
             .timeline({
+              // The rocket rises on a demand loop too (`low` tier).
+              onUpdate: invalidateRocketScenes,
               onComplete: () => {
                 setIntroDone(true);
                 if (ROCKET_PORTAL) setExhibitFx(true);
@@ -712,6 +947,7 @@ export function LandingHero({
 
       return () => {
         flybyRef.current = null;
+        root.classList.remove('is-static');
         media.revert();
       };
     },
@@ -816,8 +1052,10 @@ export function LandingHero({
           bgColor="rgba(0, 0, 0, 1)"
           starColor="rgba(255, 255, 255, 1)"
           speed={0.75}
-          quantity={400}
+          quantity={budget.starfield || 80}
           warpRef={warpRef}
+          running={flybyLive}
+          frozen={budget.starfield === 0}
         />
         <div className="hero-interior">
           <div className="landing-copy">
@@ -857,6 +1095,8 @@ export function LandingHero({
             groundLabel={exhibitGround}
             fxLabel={exhibitFxLabel}
             fx={exhibitFx}
+            rocketRunning={exhibitLive}
+            starsRunning={voidLive}
             partnersTitle={partnersTitle}
             partnersAria={partnersAria}
             partnerLogos={partnerLogos}
@@ -867,7 +1107,14 @@ export function LandingHero({
             aboutPhotoWidth={aboutPhotoWidth}
             aboutPhotoHeight={aboutPhotoHeight}
           />
-          <DissolveOverlay dissolveRef={portal} rootRef={rootRef} />
+          {/* Always in the DOM so the timeline's opacity sets have a target.
+              The shader context inside only exists on `high`, during the
+              portal. */}
+          <DissolveOverlay
+            dissolveRef={portal}
+            rootRef={rootRef}
+            active={portalLive && budget.dissolve}
+          />
         </>
       ) : null}
       <GateFrame
@@ -876,7 +1123,11 @@ export function LandingHero({
         logoSrc={logoSrc}
         stage={
           <div className="hero-rocket" aria-hidden="true">
-            <HeroRocket poseRef={rocketPose} />
+            {/* Below `high` the covered flyby gives its context back: one
+                live rocket context outside the crossfade window. */}
+            {budget.dissolve || flybyLive ? (
+              <HeroRocket poseRef={rocketPose} running={flybyLive} />
+            ) : null}
           </div>
         }
       >
@@ -901,6 +1152,7 @@ export function LandingHero({
         onClose={toggleMenu}
         centerIconSrc={menuIconSrc}
       />
+      {flags.qualityDebug ? <QualityBadge /> : null}
     </div>
   );
 }

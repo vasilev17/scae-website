@@ -73,6 +73,11 @@ const BASE_PARTICLES: Record<ElementVariant, number> = {
   fire: 560,
 };
 
+// Fraction of the sdf a rasterized title spans, and the cap on its type size
+// so a short title does not outgrow the headline it stands in for.
+const MARK_FILL = 0.88;
+const MARK_CAP = 0.076;
+
 const SOURCE_PARTICLES: Record<ElementVariant, number> = {
   water: 160,
   lightning: 240,
@@ -83,10 +88,13 @@ function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+// Template literals normalise CRLF to LF, so the multi-line patches below only
+// match once the raw source is normalised too -- otherwise they all silently
+// no-op on a CRLF checkout.
 function applyDetailPatches(source: string) {
   return DETAIL_PATCHES.reduce(
     (document, [original, enhanced]) => document.replace(original, enhanced),
-    source,
+    source.replace(/\r\n/g, '\n'),
   );
 }
 
@@ -99,11 +107,12 @@ function applyMarkText(source: string, markText: string) {
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  let size = SDF_SIZE * 0.17;
-  const maxW = SDF_SIZE * 0.9;
+  var size = SDF_SIZE * ${MARK_CAP};
   ctx.font = '700 ' + size + 'px Plateia, sans-serif';
-  while (ctx.measureText(text).width > maxW && size > 18) {
-    size -= 2;
+  var width = ctx.measureText(text).width;
+  var maxWidth = SDF_SIZE * ${MARK_FILL};
+  if (width > maxWidth) {
+    size = Math.max(8, size * maxWidth / width);
     ctx.font = '700 ' + size + 'px Plateia, sans-serif';
   }
   ctx.fillText(text, SDF_SIZE / 2, SDF_SIZE / 2);
@@ -117,6 +126,10 @@ const MARK_TEXT = ${JSON.stringify(markText)};
       'function buildLogo(path) {',
       `${rasterize}function buildLogo(path) {`,
     )
+    // A title is wide and short, so lay the square sdf across the panel's
+    // width; the authored fit sizes it to the panel's height, which on a
+    // headline strip leaves the type a few pixels tall.
+    .replace('const fit = Math.min(a, 1);', 'const fit = a;')
     .replace(
       'const logos = {',
       `Promise.resolve(document.fonts.load('700 72px Plateia')).catch(function () {}).then(function () {
