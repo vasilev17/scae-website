@@ -7,24 +7,16 @@ import { useQualityBudget } from '@/lib/use-quality-tier';
 export type SpecularButtonProps = {
   ref?: Ref<HTMLButtonElement>;
   children?: ReactNode;
-  // Glass fill behind the label.
   tint?: string;
   tintOpacity?: number;
-  // Backdrop blur in pixels.
   blur?: number;
   textColor?: string;
-  // Colour of the specular streak that tracks the pointer.
   lineColor?: string;
-  // Colour of the static stroke hugging the edge under the streak.
   baseColor?: string;
   intensity?: number;
-  // Angular size of each streak, in degrees.
   shineSize?: number;
-  // How gradually a streak fades out at its ends, in degrees.
   shineFade?: number;
-  // Width of the streak, in pixels.
   thickness?: number;
-  // Pointer distance in pixels at which the streak reaches full brightness.
   proximity?: number;
   disabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
@@ -100,9 +92,6 @@ void main() {
   // Dark base stroke hugging the edge for a sense of thickness
   float base = (1.0 - smoothstep(0.0, uBaseWidth, abs(d))) * 0.45;
 
-  // Symmetric specular: the edges facing toward/away from the light both
-  // catch a streak. The angular window (size + fade) is measured with an
-  // elliptical normal so it varies continuously along straight edges.
   vec2 nEll = normalize(p / (uHalfSize * uHalfSize) + 1e-6);
   float phi = acos(clamp(abs(dot(nEll, L)), 0.0, 1.0));
   float rim = 1.0 - smoothstep(uShineSize - uShineFade, uShineSize + uShineFade + 1e-4, phi);
@@ -116,12 +105,6 @@ void main() {
 }
 `;
 
-/**
- * Glass button whose edge catches a specular highlight that follows the
- * pointer. Defaults are tuned for the dark controls the gate navbar carries
- * over brushed metal. The box metrics (padding, font, corner radius) belong to the
- * class passed in `className`.
- */
 export function SpecularButton({
   ref,
   children,
@@ -148,11 +131,7 @@ export function SpecularButton({
 }: SpecularButtonProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const fxRef = useRef<HTMLSpanElement>(null);
-  // Subscribed, not read once: when the FPS probe drops the tier these
-  // contexts are among the first the page can give back.
   const specular = useQualityBudget().specular;
-  // The shader needs the element too, so a caller's ref is merged in rather
-  // than handed the node exclusively.
   const setButtonRef = useCallback(
     (node: HTMLButtonElement | null) => {
       btnRef.current = node;
@@ -161,8 +140,6 @@ export function SpecularButton({
     },
     [ref],
   );
-  // The render loop reads its parameters through a ref so that retuning them
-  // never has to tear down the GL context.
   const propsRef = useRef<ShaderProps>({
     lineColor,
     baseColor,
@@ -198,9 +175,6 @@ export function SpecularButton({
     const fx = fxRef.current;
     if (!btn || !fx) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // One WebGL2 context per button is a `high` luxury, and the page mounts
-    // several. Lower tiers keep the CSS glass and the static stroke from the
-    // stylesheet.
     if (!specular) return;
 
     const dpr = window.devicePixelRatio || 1;
@@ -252,17 +226,12 @@ export function SpecularButton({
     let dead = false;
     const resize = (entry?: ResizeObserverEntry) => {
       if (dead) return;
-      // Layout box only. getBoundingClientRect includes ancestor scale
-      // (gate flyby, intro), which made the SDF stroke a huge stale rect
-      // after reload while the pill itself stayed correct.
       const size = entry?.contentBoxSize?.[0];
       const w = size?.inlineSize ?? btn.offsetWidth;
       const h = size?.blockSize ?? btn.offsetHeight;
       if (w < 2 || h < 2) return;
       box.w = w;
       box.h = h;
-      // The stylesheet owns the corner radius, so read it back rather than
-      // asking the caller to keep a prop in sync with the CSS.
       box.radius = Math.min(
         parseFloat(getComputedStyle(btn).borderTopLeftRadius) || 0,
         Math.min(w, h) / 2,
@@ -287,8 +256,6 @@ export function SpecularButton({
       const dx = Math.max(rect.left - e.clientX, 0, e.clientX - rect.right);
       const dy = Math.max(rect.top - e.clientY, 0, e.clientY - rect.bottom);
       const dist = Math.hypot(dx, dy);
-      // Over the button itself the light settles on the diagonal (framing the
-      // corners) and gently sways with the cursor position within the button.
       if (dist === 0) {
         const nx = (e.clientX - cx) / (rect.width / 2);
         const ny = (cy - e.clientY) / (rect.height / 2);
@@ -334,8 +301,6 @@ export function SpecularButton({
       program.uniforms.uThickness.value = p.thickness * dpr;
       renderer.render({ scene: mesh });
 
-      // Out of range and fully faded: the frame just drawn is the resting one,
-      // so stop burning frames until the pointer comes back.
       if (proximityT === 0 && bright < 0.002) {
         raf = 0;
         return;
@@ -398,8 +363,6 @@ export function SpecularButton({
         aria-hidden="true"
         className="pointer-events-none absolute -inset-5 z-[1] [&_canvas]:block [&_canvas]:h-full [&_canvas]:w-full"
       />
-      {/* Picks up the button's own gap so callers can lay out label and icon
-          with a single class on the button. */}
       <span className="relative z-[2] inline-flex items-center gap-[inherit]">
         {children}
       </span>

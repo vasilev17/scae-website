@@ -1,24 +1,3 @@
-/**
- * Turns the raw lanyard badge export into the SCAE member badge.
- *
- * Two problems with the source asset: its 1678px PNG atlas is 2.2 MB of a
- * 2.4 MB file, and both card faces carry the upstream project's branding
- * baked in. This rebuilds the atlas from a blank patch of the same paper
- * grain and stamps the SCAE mark on both faces.
- *
- * Geometry is deliberately left uncompressed. Meshopt quantizes positions and
- * pushes the dequant factor into each node's scale, and the Lanyard component
- * (like upstream) mounts `nodes.card.geometry` without the node transform —
- * which silently renders the clip and clamp an order of magnitude oversize.
- * The atlas is the whole payload here anyway; the meshes are a few KB.
- *
- * Atlas layout, measured off the source UVs: the front face maps to the left
- * half and the back face to the right half, each ending at ~75.5% height.
- * The strip below that wraps the card edges, so it stays blank paper.
- *
- * Run: node scripts/build-badge-model.mjs
- */
-
 import { mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +20,6 @@ const PAPER = { left: 80, top: 1220, width: 420, height: 420 };
 const FRONT = { x: 0, y: 0, w: 0.5, h: 0.755 };
 const BACK = { x: 0.5, y: 0, w: 0.5, h: 0.757 };
 
-/** Centres a square mark inside a UV rect, sized as a share of rect width. */
 function markPlacement(rect, share) {
   const rx = Math.round(rect.x * ATLAS);
   const ry = Math.round(rect.y * ATLAS);

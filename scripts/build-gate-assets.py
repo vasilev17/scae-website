@@ -1,18 +1,3 @@
-"""Script to bake the gate-reveal artwork exported from Figma into web-ready assets.
-
-Figma stacks three fills on each gate pane: a linear gradient, a "detail" metal
-photo at 6% opacity, and a "main" metal photo at 20% opacity. CSS backgrounds
-have no per-layer opacity, so the two photos are flattened here into a single
-RGBA texture whose alpha carries those opacities. The gradient stays in CSS so
-it can stretch to any viewport without distorting.
-
-The full-resolution source photos are base64-embedded inside the pane SVG that
-Figma produced, so they are read from there rather than from the downscaled
-PNG exports.
-
-Run: python scripts/build-gate-assets.py
-"""
-
 from __future__ import annotations
 
 import base64
@@ -27,12 +12,9 @@ PANE_SVG = ROOT / "src/assets/images/gate-pane-top.svg"
 LOGO_SVG = ROOT / "src/assets/logos/scae-logo.svg"
 OUT_DIR = ROOT / "src/assets/generated"
 
-# Fill opacities as authored in Figma, bottom layer first.
 DETAIL_OPACITY = 0.06
 MAIN_OPACITY = 0.20
 
-# The pane is ~1920x540 on the reference frame and the texture is stretched to
-# fill it, so the bake is pre-squashed to that aspect ratio.
 TEXTURE_SIZE = (1600, 450)
 TEXTURE_QUALITY = 80
 LOGO_SIZE = 1024
@@ -48,11 +30,9 @@ def embedded_images(svg_path: Path) -> list[Image.Image]:
 
 
 def bake_texture(detail: Image.Image, main: Image.Image) -> Image.Image:
-    """Composite main-over-detail onto transparency, preserving Figma opacities."""
     detail = detail.resize(TEXTURE_SIZE, Image.LANCZOS)
     main = main.resize(TEXTURE_SIZE, Image.LANCZOS)
 
-    # Figma's pattern transform mirrors both axes (180 degree rotation)
     detail = detail.rotate(180)
     main = main.rotate(180)
 

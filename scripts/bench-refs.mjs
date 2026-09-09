@@ -1,17 +1,3 @@
-/**
- * Гл. II comparison harness. Same method as AGENTS-THESIS.md §7:
- * mobile (Moto G Power / Slow 4G / 4× CPU), 3 runs, median, cache off.
- * Desktop score is a second 3-run block so column 5 has both numbers.
- *
- *   pnpm bench:refs
- *   OUR_URL=http://127.0.0.1:4321/en/ pnpm bench:refs
- *   pnpm bench:refs -- --only=ours
- *   pnpm bench:refs -- --only=spacex,rocketlab --skip-desktop
- *
- * Writes lighthouse-report/ (gitignored): per-run JSON, screenshots, table.md.
- * Start `pnpm preview` before `--only=ours` unless OUR_URL is production.
- */
-
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -15,7 +15,6 @@ export const SOCIAL_MAX = 150;
 export const MESSAGE_MIN = 20;
 export const MESSAGE_MAX = 2000;
 
-/** Localized copy for every failure the schema can produce. */
 export type ContactFieldErrors = {
   name: string;
   email: string;
@@ -24,10 +23,6 @@ export type ContactFieldErrors = {
   messageLong: string;
 };
 
-/**
- * Both tabs post the same shape. The general tab never renders `social`, and
- * the schema leaves it unconstrained there, so the field simply stays empty.
- */
 export type ContactValues = {
   name: string;
   email: string;

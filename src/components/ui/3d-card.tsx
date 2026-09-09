@@ -1,5 +1,3 @@
-// Source: https://ui.aceternity.com/components/3d-card-effect  Adapted: 2026-09-08
-
 import {
   createContext,
   useContext,
@@ -50,8 +48,6 @@ export function CardContainer({
 }: CardContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMouseEntered, setIsMouseEntered] = useState(false);
-  // Touch reads the card flat. A tap fires emulated mouse events, so the tilt
-  // would snap on and stay there, and the 3D layers sit on top of a scroller.
   const canTilt = useMediaQuery(FINE_POINTER_QUERY);
 
   const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {

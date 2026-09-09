@@ -32,18 +32,6 @@ type RocketSceneComponent = ComponentType<{
   portrait?: boolean;
 }>;
 
-/**
- * The hero island is `client:load`, so three.js must not enter its SSR tree.
- * The scene module is fetched after paint, then rendered in this same React
- * tree (Suspense can resolve `useLoader` here; a second `createRoot` cannot).
- *
- * On the `fallback` tier (no WebGL context) the module is never fetched and
- * a baked poster of the parked rocket stands in, so the page stays usable
- * and the three.js chunk never hits the network.
- *
- * Vite can 504 the first fetch while it rebundles three.js. One retry covers
- * that window; a real load error still lands in the console.
- */
 export function HeroRocket({
   poseRef,
   view = 'flyby',
@@ -55,8 +43,6 @@ export function HeroRocket({
   const [Scene, setScene] = useState<RocketSceneComponent | null>(null);
 
   useEffect(() => {
-    // Read the store directly: the hydration render still carries the server
-    // tier, and this effect must not start the import on a fallback device.
     if (getQualityTier() === 'fallback') return;
 
     let cancelled = false;
@@ -106,9 +92,6 @@ type RocketPosterProps = {
   view: RocketView;
 };
 
-// Baked by scripts/build-rocket-poster.mjs from the same GLB, lights and
-// paint. The stylesheet parks each frame where the live scene would, and
-// turns the exhibit frame upright on portrait phones.
 function RocketPoster({ view }: RocketPosterProps) {
   const exhibit = view === 'exhibit';
   return (

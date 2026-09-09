@@ -57,8 +57,8 @@ export const bg: UiDictionary = {
       body: 'Разработихме стенд за твърдогоривни ракетни двигатели, за да изпитваме и проверяваме моделите безопасно. Той дава пълна защита при отказ чрез конструктивни механизми за безопасност и безжично управление. Измерва до 200 N тяга и температури до 1000°C по външната стена на двигателя. Стендът е предвиден да се разширява с още датчици — за налягане и температура.',
       launchBody:
         'Стартова площадка ще ползва същата архитектура, за да останат операциите на площадката дистанционни, инструментирани и устойчиви на отказ при прехода от статичен огън към полет.',
-      standAlt: 'Стенд за двигатели в работилницата на СКАИ',
-      padAlt: 'Хардуер на Commodore върху изложбения стенд',
+      standAlt: 'Пускова конзола на наземната станция на СКАИ с графики за тяга и температура',
+      padAlt: 'Хардуер SFETI на наземната станция на СКАИ с аварийно спиране и портове за телеметрия',
       expandPhoto: 'Отвори снимката',
       closePhoto: 'Затвори снимката',
     },
@@ -68,27 +68,27 @@ export const bg: UiDictionary = {
       open: 'Отвори описанието',
       fins: {
         title: 'Стабилизатори',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'Аеродинамичните стабилизиращи повърхности са базирани на установен профил с линейни свойства. Профилът е удебелен, за да се осигури достатъчна здравина след производство чрез 3D печат от ABS. След модификацията е извършен нов CFD анализ за определяне на новите аеродинамични характеристики.',
       },
       engine: {
         title: 'Двигател',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'За Commodore е избрано относително безопасно и технологично достъпно гориво. Горивната камера е от алуминий и стомана. За процеса на проектиране е разработен софтуер за полуавтоматизирано проектиране, а производството е извършено изцяло от членовете на клуба.',
       },
       parachute: {
         title: 'Парашутен отсек',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'Поради ниския очакван апогей е избрана схема с един шестоъгълен парашут. Изработен е от ripstop найлон и подсилени нишки.',
       },
       pyro: {
         title: 'Пирозаряд',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'При достигане на апогей електрически сигнал запалва пиротехнически заряд и разделя ракетата на две части, за да се разтвори парашут за меко кацане. Конструкцията е проектирана за надеждно разтваряне въпреки грубите допуски на производствения процес.',
       },
       avionics: {
         title: 'Електронен отсек',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'Първото поколение на електрониката е проектирано да следи всички ключови параметри на ракетата. Сред тях са местоположение, ускорение, температури на двигателя и носовия конус, състоянието на електрониката и други критични параметри. Записва данните на SD карта и ги предава по телекомуникационен канал. Състои се от бордови компютър, захранване, GNSS модул и модул за събиране на данни.',
       },
       nose: {
         title: 'Носов конус',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'Носовият конус е проектиран по профил LD-HAACK, модифициран за ниските скорости, предвидени от симулациите. Новата форма е подложена на допълнителен CFD анализ за определяне на аеродинамичните характеристики.',
       },
     },
     partners: 'Партньори',

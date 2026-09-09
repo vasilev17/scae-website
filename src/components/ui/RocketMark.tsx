@@ -9,11 +9,6 @@ import {
 
 import markUrl from '@/assets/generated/scae-logo.webp?url';
 
-/**
- * Vinyl mark on the black band, just above the orange. Not baked into the
- * GLB: delete this file and the import in RocketScene to remove it, or flip
- * the flag below.
- */
 export const ROCKET_MARK_ENABLED = true;
 
 // Model space, metres. Tail at y = 0, nose at ~1.275.

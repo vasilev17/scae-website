@@ -6,7 +6,6 @@ type GateNavProps = {
   logoSrc: string;
   contactIconSrc: string;
   menuIconSrc: string;
-  // Accessible name for the navigation landmark.
   label: string;
   brand: string;
   contactLabel: string;
@@ -18,10 +17,6 @@ type GateNavProps = {
   menuButtonRef?: Ref<HTMLButtonElement>;
 };
 
-/**
- * Navigation bar carried by the top gate pane. The menu control shuts the gate
- * and opens the navigation dial behind it. Contact jumps the page to the form.
- */
 export function GateNav({
   logoSrc,
   contactIconSrc,

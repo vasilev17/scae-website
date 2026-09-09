@@ -1,13 +1,3 @@
-// Source: https://threeui.com/source-code/elemental-lightning.json  Adapted: 2026-09-08
-// Authored detail refinements from ElementsBackground.tsx (SHA-256 04dfbb5d8e91).
-//
-// Every shader patch below lands inside a JS template literal in the iframe
-// document (`const FRAG_LIGHTNING = ...`), so a backtick or a ${ } in the
-// replacement text -- a comment included -- closes that literal and takes the
-// whole panel script down with a syntax error. The panel then renders nothing
-// and the headline vanishes silently, because the <h2> behind it is
-// transparent whenever the effect is meant to be on.
-
 export const DETAIL_PATCHES = [
   [
     "const SDF_SIZE = 512;\nconst SDF_SPREAD = 128;",

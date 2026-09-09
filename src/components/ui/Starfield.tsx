@@ -1,11 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-/**
- * Live warp controls, read once per frame so an animation engine can drive the
- * field without re-rendering the island. `speed` multiplies the travel per
- * frame; `zoom` widens the projection, which pushes stars outward from the
- * centre the way flying into the field would.
- */
 export type StarfieldWarp = {
   speed: number;
   zoom: number;
@@ -17,17 +11,8 @@ interface StarfieldProps {
   speed?: number;
   quantity?: number;
   warpRef?: RefObject<StarfieldWarp>;
-  // On: the landing field. `warpRef` drives speed and zoom, one step per
-  // rendered frame, so the flyby can push the field around.
-  // Off: a sealed field. `warpRef` is ignored and travel runs on a fixed
-  // step, so no input, scroll or dropped frame can alter pace or streak
-  // length — variable steps are what made the stars flicker pale.
   warpReactive?: boolean;
-  // Off while the field is covered (portal closed, void veil up) so the
-  // canvas owes no frames it cannot show. Back on resumes in place.
   running?: boolean;
-  // One paint, no loop: the `fallback` tier's static sky. Same path as
-  // reduced motion.
   frozen?: boolean;
 }
 
@@ -169,9 +154,6 @@ export function Starfield({
         return;
       }
 
-      // Fixed step, run as many times as the elapsed time covers. Every
-      // step travels the same distance, so streak length — and with it the
-      // apparent brightness — never changes with frame rate.
       const ratio = quantity / 2;
       pending += lastTick ? now - lastTick : FRAME_MS;
       lastTick = now;
@@ -235,8 +217,6 @@ export function Starfield({
     measureViewport();
     initStars();
 
-    // A frozen field still needs its first projection, or every star sits
-    // on the centre with no streak to draw.
     if (still) {
       step(speed, (quantity / 2) * (warpRef?.current.zoom ?? 1));
       draw();

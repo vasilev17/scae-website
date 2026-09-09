@@ -54,8 +54,6 @@ type RocketExhibitProps = {
   fxLabel: string;
   hotspotCopy: RocketHotspotCopy;
   fx: boolean;
-  // The exhibit canvas is worth a frame from the zoom until the void field
-  // covers it. The field runs only once it is up.
   rocketRunning: boolean;
   starsRunning: boolean;
   partnersTitle: string;
@@ -106,10 +104,6 @@ function ExhibitHudButton({
   );
 }
 
-/**
- * Incoming side of the portal: assembled rocket, horizontal, name underneath.
- * Hidden until the dissolve hole opens; GSAP owns visibility.
- */
 export function RocketExhibit({
   name,
   work,
@@ -138,8 +132,6 @@ export function RocketExhibit({
   const sectionRef = useRef({ ...REST_SECTION });
   const [cutOpen, setCutOpen] = useState(false);
   const budget = useQualityBudget();
-  // Same query as the stylesheet's band rules, so the rocket turns upright
-  // in the same frame the stage shrinks to its band.
   const portrait = useMediaQuery(EXHIBIT_PORTRAIT_QUERY);
   const [missionOpen, setMissionOpen] = useState(false);
   const [missionMounted, setMissionMounted] = useState(false);
@@ -235,8 +227,6 @@ export function RocketExhibit({
         </div>
       </div>
       <div className="rocket-exhibit-stage" aria-hidden="true">
-        {/* `high` keeps the canvas warm for the whole session. Lower tiers
-            only hold a context while the exhibit can actually be seen. */}
         {budget.dissolve || rocketRunning ? (
           <HeroRocket
             poseRef={poseRef}
@@ -250,8 +240,6 @@ export function RocketExhibit({
       {fx && !cutOpen && budget.exhibitFx ? (
         <ExhibitFx portrait={portrait} />
       ) : null}
-      {/* The cut is what the callouts annotate, so the fallback tier — which
-          never swaps in the section mesh — gets no markers. */}
       {budget.webgl ? (
         <ExhibitHotspots
           open={cutOpen}
@@ -311,8 +299,6 @@ export function RocketExhibit({
       </div>
       <div className="rocket-exhibit-veil" aria-hidden="true" />
       <div className="void-stars" aria-hidden="true">
-        {/* Always mounted so the canvas can size before the fade. Sealed off
-            from warp: this field ignores scroll, pointer and frame rate. */}
         <Starfield
           bgColor="rgba(0, 0, 0, 1)"
           starColor="rgba(255, 255, 255, 1)"

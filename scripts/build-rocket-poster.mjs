@@ -1,14 +1,3 @@
-// Bakes the no-WebGL poster for the `fallback` quality tier: rocket.glb is
-// rendered once through a headless Chromium (Edge or Chrome), trimmed and
-// written as a transparent WebP. Two frames: the parked flyby rocket (nose
-// up, flyby lights) and the exhibit rocket (nose right, exhibit rig).
-//
-//   node scripts/build-rocket-poster.mjs
-//   BROWSER_BIN="C:\path\to\chrome.exe" node scripts/build-rocket-poster.mjs
-//
-// Paint and rig values mirror RocketScene.tsx / rocket-paint.ts. Keep them in
-// step when those change, or the poster drifts from the live scene.
-
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';

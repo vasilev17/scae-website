@@ -1,6 +1,3 @@
-// Source: https://ui.aceternity.com/components/pixelated-canvas  Adapted: 2026-09-08
-// Coming-soon Home hover-orb settings. Pointer distorts sampled dots (repel).
-
 import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -26,10 +23,6 @@ type CanvasDims = {
   dot: number;
 };
 
-// The only state the two effects share. Sampling the image and listening to
-// the pointer are separate concerns on separate lifetimes: turning the
-// interaction off must not cost a re-decode and a re-sample of the mark, which
-// would land on exactly the devices that asked for the cheaper mode.
 type PointerRuntime = {
   dims: CanvasDims | null;
   target: { x: number; y: number };
@@ -67,16 +60,7 @@ type PixelatedCanvasProps = {
   jitterSpeed?: number;
   fadeOnLeave?: boolean;
   fadeSpeed?: number;
-  // Shrinks the mark inside the buffer without shrinking the buffer, so the
-  // canvas can cover its whole box -- and stay hoverable out to the edges --
-  // while the artwork still sits inset from whatever frames it.
   imageScale?: number;
-  // Nudges the artwork, in fractions of its drawn size, so it survives a
-  // change of imageScale. Artwork is rarely centred in its own file, and no
-  // automatic measure of it agrees with the eye: a bounding box follows
-  // whatever spikes furthest out, a centroid follows whatever is brightest,
-  // and the eye follows the shape it reads as the subject. Measure the file,
-  // then say the number here.
   imageOffsetX?: number;
   imageOffsetY?: number;
 };
@@ -132,8 +116,6 @@ export function PixelatedCanvas({
     return () => query.removeEventListener('change', sync);
   }, []);
 
-  // Samples the image into dots and owns the frame loop. Deliberately blind to
-  // `interactive`: binding the pointer is the other effect's job.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -162,11 +144,6 @@ export function PixelatedCanvas({
       let displayWidth = width;
       let displayHeight = height;
       if (responsive && parent) {
-        // clientWidth ignores the gallery scale-in, so the buffer is not 0×0
-        // while GSAP still has the mark at scale(0). It does count the
-        // parent's padding though, which the canvas's own `width: 100%` does
-        // not -- measure the content box or the buffer overhangs the padding,
-        // taking the mark off centre and pushing it under the clip.
         const box = getComputedStyle(parent);
         const boxWidth =
           parent.clientWidth -
@@ -222,8 +199,6 @@ export function PixelatedCanvas({
 
       const data = imageData.data;
       const stride = offscreen.width * 4;
-      // Not floored: at cellSize 3 a 0.9 scale rounds down to 2, which thins
-      // the mark by a third rather than the tenth the scale asks for.
       const effectiveDot = Math.max(0.5, cellSize * dotScale);
       rt.dims = {
         width: displayWidth,
@@ -379,8 +354,6 @@ export function PixelatedCanvas({
       raf = requestAnimationFrame(tick);
     };
 
-    // The pointer effect reaches the loop through here, so it always calls the
-    // live one rather than whichever closure it happened to capture.
     rt.startLoop = startLoop;
 
     const syncMode = () => {
@@ -397,9 +370,6 @@ export function PixelatedCanvas({
     const start = () => {
       if (cancelled || started) return;
       if (!img.naturalWidth) return;
-      // A parent with no size yet leaves this false, so the resize observer
-      // gets another go rather than the mark staying blank and deaf to the
-      // pointer for the life of the page.
       started = syncMode();
     };
 
@@ -459,8 +429,6 @@ export function PixelatedCanvas({
     imageOffsetY,
   ]);
 
-  // Listeners only. Turning interaction off unbinds and lets the loop settle
-  // to a static mark; it never touches the sampled buffer, so no re-decode.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !interactive || reduced) return;
@@ -471,9 +439,6 @@ export function PixelatedCanvas({
       const rect = canvas.getBoundingClientRect();
       const dims = rt.dims;
       if (!dims || rect.width < 1 || rect.height < 1) return;
-      // The box on screen is not always the buffer's own size -- the gallery
-      // scales the mark in -- so the cursor has to be mapped through it
-      // instead of being read as buffer pixels.
       rt.target.x = (clientX - rect.left) * (dims.width / rect.width);
       rt.target.y = (clientY - rect.top) * (dims.height / rect.height);
       rt.inside = true;
@@ -523,8 +488,6 @@ export function PixelatedCanvas({
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointercancel', onPointerUp);
       canvas.removeEventListener('pointerleave', onPointerLeave);
-      // Hand the mark back to the loop to wind down and repaint clean, rather
-      // than freezing it mid-distortion.
       rt.inside = false;
       rt.activityTarget = 0;
       rt.startLoop?.();

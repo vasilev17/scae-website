@@ -1,5 +1,3 @@
-// Source: https://reactbits.dev/components/dome-gallery  Adapted: 2026-09-08
-
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { useGesture } from '@use-gesture/react';
@@ -94,8 +92,6 @@ function buildItems(pool: DomeImage[], seg: number): ItemDef[] {
   });
 
   const totalSlots = coords.length;
-  // No images means no tiles. Filling the sphere with `src=""` makes the
-  // browser re-request the document once per slot.
   if (pool.length === 0) return [];
 
   const usedImages = Array.from(

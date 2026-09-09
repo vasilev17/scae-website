@@ -13,12 +13,10 @@ export type CircularMenuItem = {
 type CircularMenuProps = {
   open: boolean;
   items: CircularMenuItem[];
-  // Accessible name for the menu as a whole.
   label: string;
   closeLabel: string;
   onClose: () => void;
   onNavigate: (item: CircularMenuItem) => void;
-  // Icon at rest in the middle of the joystick.
   centerIconSrc: string;
 };
 
@@ -31,7 +29,6 @@ const LABEL_RADIUS = 27;
 // Trimmed off both ends of a segment so the ring reads as separate keys.
 const SEGMENT_GAP = 0.6;
 
-// How far the joystick can be pushed, and how far it counts as pushed.
 const DRAG_RANGE = 0.25;
 const DRAG_THRESHOLD = 0.8;
 // Share of the remaining distance the joystick covers each frame.
@@ -80,18 +77,12 @@ function buildSegment(index: number, total: number): Segment {
   };
 }
 
-// Which segment a push in this direction points at, counting from the top.
 function segmentAt(x: number, y: number, total: number) {
   const angle = (Math.atan2(y, x) * 180) / Math.PI;
   const fromTop = (angle + 90 + 360) % 360;
   return Math.floor(fromTop / (360 / total)) % total;
 }
 
-/**
- * Fades a set of elements to `to` one after another, each with the stutter of a
- * tube light coming on. Order is shuffled so the ring never lights up the same
- * way twice.
- */
 function flicker(segments: Element[], to: number, step: number) {
   const timeline = gsap.timeline();
 
@@ -121,11 +112,14 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-/**
- * Full-screen navigation dial. The caller owns the `open` flag and whatever
- * happens behind it — here that is the gate closing first, which is why this
- * animates in from nothing rather than covering the page itself.
- */
+const LABEL_WRAP_AFTER = 10;
+
+function labelLines(label: string) {
+  const words = label.trim().split(/\s+/);
+  if (words.length < 2 || label.length <= LABEL_WRAP_AFTER) return [label];
+  return words;
+}
+
 export function CircularMenu({
   open,
   items,
@@ -155,8 +149,6 @@ export function CircularMenu({
       );
       const joystick = joystickRef.current;
 
-      // Nothing to reveal on the first pass, and readers who opted out of
-      // motion only ever see the two end states.
       if (!revealedRef.current || prefersReducedMotion()) {
         revealedRef.current = true;
         gsap.set(rootRef.current, { autoAlpha: open ? 1 : 0 });
@@ -187,8 +179,6 @@ export function CircularMenu({
     { scope: rootRef, dependencies: [open] },
   );
 
-  // Focus lands on the only control that gets the reader back out. The gate
-  // navbar behind is hidden by then, so there is nothing else to tab to.
   useEffect(() => {
     if (open) closeRef.current?.focus();
   }, [open]);
@@ -204,10 +194,6 @@ export function CircularMenu({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
-  /**
-   * The joystick steers rather than clicks: pushing it toward a segment lights
-   * that segment up, releasing lets it spring back.
-   */
   useEffect(() => {
     const joystick = joystickRef.current;
     if (!joystick || !open) return;
@@ -246,8 +232,6 @@ export function CircularMenu({
 
     const onPointerDown = (event: PointerEvent) => {
       const rect = joystick.getBoundingClientRect();
-      // Measured back off the current offset, so grabbing a joystick that is
-      // still springing back does not shift its centre.
       origin.x = rect.left + rect.width / 2 - current.x;
       origin.y = rect.top + rect.height / 2 - current.y;
       range = rect.width * DRAG_RANGE;
@@ -364,7 +348,15 @@ export function CircularMenu({
                     x={segment.labelX}
                     y={segment.labelY + 2}
                   >
-                    {item.label}
+                    {labelLines(item.label).map((line, lineIndex) => (
+                      <tspan
+                        key={line}
+                        x={segment.labelX}
+                        dy={lineIndex === 0 ? 0 : '1.15em'}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
                 </a>
               );

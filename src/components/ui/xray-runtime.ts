@@ -1,8 +1,3 @@
-/**
- * Bake a cyan blueprint plate from the internals PNG, and stamp a
- * pixelated noisy hole that follows the pointer.
- */
-
 export const XRAY_CELL = 12;
 
 function hash2(x: number, y: number): number {
@@ -52,10 +47,6 @@ export function parseHexRgb(hex: string): Rgb {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
-/**
- * Soft cyan blueprint plate. Empty PNG stays transparent so the rocket
- * still reads through the hole.
- */
 export function bakeXrayPlate(
   image: HTMLImageElement,
   tint: Rgb = FALLBACK_TINT,
@@ -228,10 +219,6 @@ function getHullScratch(): HullScratch | null {
   return hullScratch;
 }
 
-/**
- * Sobel the exhibit WebGL canvas inside the hole: silhouette from alpha,
- * panel lines from luminance. Stamped source-atop so it stays in the blob.
- */
 function stampHullEdges(ctx: CanvasRenderingContext2D, frame: XrayPaint): void {
   const rocket = frame.rocket;
   if (!rocket || rocket.width === 0 || rocket.height === 0) return;
@@ -387,14 +374,8 @@ function getHitScratch(): HitScratch | null {
   return hitScratch;
 }
 
-// ContactShadows sit around 0.58 opacity. Opaque mesh is 255. Cut
-// between them so the puddle under the rocket does not open the hole.
 const HULL_HIT_ALPHA = 200;
 
-/**
- * True when the exhibit WebGL canvas has opaque mesh under the pointer.
- * Starfield and the contact shadow stay a miss; fins and the tube count.
- */
 export function hitRocketSilhouette(
   rocket: HTMLCanvasElement,
   cssX: number,

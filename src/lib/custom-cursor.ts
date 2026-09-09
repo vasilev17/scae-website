@@ -28,10 +28,6 @@ function isHoverTarget(target: EventTarget | null): boolean {
   return node?.closest(HOVER_SELECTOR) != null;
 }
 
-/**
- * Replaces the native pointer with the site reticle on fine pointers. No-ops
- * on touch and when the reader asked for reduced motion.
- */
 export function mountCustomCursor(): void {
   if (!flags.customCursor || mounted) return;
 

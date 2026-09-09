@@ -10,7 +10,6 @@ export function getDictionary(locale: Locale): UiDictionary {
   return dictionaries[locale];
 }
 
-/** Builds one static route per locale for `src/pages/[locale]/` routes. */
 export function localeStaticPaths() {
   return locales.map((locale) => ({ params: { locale } }));
 }

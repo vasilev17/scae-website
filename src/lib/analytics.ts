@@ -21,11 +21,6 @@ function flush() {
   pending.length = 0;
 }
 
-/**
- * Cookieless PostHog. Missing env = no-op so clones and CI still build.
- * Call only from the browser, after idle or first input.
- * Dynamic-imports `posthog-js` so the hero island never pays for it.
- */
 export function initAnalytics() {
   if (booted) return;
   booted = true;
@@ -42,8 +37,6 @@ export function initAnalytics() {
       capture_pageview: true,
       capture_pageleave: true,
       disable_session_recording: true,
-      // PostHog's own `$web_vitals` event (LCP, INP, CLS, FCP). It carries the
-      // super properties below, so every vitals row knows its quality tier.
       capture_performance: { web_vitals: true },
     });
     client = posthog;
@@ -51,10 +44,6 @@ export function initAnalytics() {
   });
 }
 
-/**
- * Super properties: attached to every later event, including the automatic
- * `$pageview` / `$web_vitals`. Safe before init.
- */
 export function setAnalyticsContext(props: EventProps) {
   context = { ...context, ...props };
   if (import.meta.env.DEV) console.info('[analytics] context', context);

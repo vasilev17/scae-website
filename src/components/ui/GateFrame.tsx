@@ -11,11 +11,6 @@ type GateFrameProps = {
   stage?: ReactNode;
 };
 
-/**
- * Markup for the two hangar panes and the split logo. It carries no animation
- * of its own; whoever renders it drives the pane groups. Without scripting the
- * stylesheet parks the panes at their resting positions.
- */
 export function GateFrame({
   ref,
   metalSrc,

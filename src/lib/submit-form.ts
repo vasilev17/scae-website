@@ -1,9 +1,3 @@
-/**
- * The single place the site talks to a form backend. Swapping Formspree for
- * anything else touches this file only — components hand over a form id and a
- * flat payload and get a result union back.
- */
-
 export type FormPayload = Record<string, string>;
 
 export type SubmitResult =
@@ -12,8 +6,6 @@ export type SubmitResult =
 
 const ENDPOINT = 'https://formspree.io/f/';
 
-// Formspree reads the hCaptcha token off this key and verifies it server-side
-// against the secret stored in the form's dashboard settings.
 export const CAPTCHA_FIELD = 'h-captcha-response';
 
 // Formspree drops any submission where this field is filled in.

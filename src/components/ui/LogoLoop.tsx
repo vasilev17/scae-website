@@ -1,4 +1,3 @@
-// Source: https://reactbits.dev/animations/logo-loop — copied 2026-09-04.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type LogoItem =

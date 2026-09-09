@@ -26,16 +26,10 @@ type ExhibitFxProps = {
   portrait: boolean;
 };
 
-/**
- * Hover X-ray: a pixelated noisy hole tracks the pointer and stamps a
- * soft cyan blueprint of the internals over the exhibit rocket.
- */
 export function ExhibitFx({ portrait }: ExhibitFxProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Orientation is a dependency, not a ref: a flip rebakes the plate, which
-  // is rare enough that the simpler effect wins.
   useEffect(() => {
     const root = rootRef.current;
     const canvas = canvasRef.current;

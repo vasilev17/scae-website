@@ -1,5 +1,3 @@
-// Source: https://ui.aceternity.com/components/spotlight  Adapted: 2026-08-23
-
 import React from 'react';
 
 import { cn } from '@/lib/utils';

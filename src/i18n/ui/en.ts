@@ -54,8 +54,8 @@ export const en = {
       body: 'A test stand for solid fuel rocket engines was developed to safely test and verify our engine models. It provides full protection against failures via constructive safety mechanisms and wireless operation capabilities. It can measure up to 200 N of thrust, and temperatures up to 1000°C on the external wall of an engine. The stand is designed with the capability to be extended with more sensors such as pressure and temperature ones.',
       launchBody:
         'A launching stand will reuse this architecture so pad operations stay remote, instrumented, and fail-safe as the vehicle moves from static fire to flight.',
-      standAlt: 'Engine test stand in the SCAE workshop',
-      padAlt: 'Commodore hardware on the exhibit stand',
+      standAlt: 'SCAE ground-station launch dashboard with live thrust and temperature plots',
+      padAlt: 'SCAE SFETI ground-station hardware with emergency stop and telemetry ports',
       expandPhoto: 'Open photo',
       closePhoto: 'Close photo',
     },
@@ -65,27 +65,27 @@ export const en = {
       open: 'Open callout',
       fins: {
         title: 'Fins',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'The aerodynamic stabilizing surfaces are based on an established profile with linear properties. It has been thickened to ensure sufficient strength after being manufactured via 3D printing using ABS. Following the modification, a new CFD analysis was performed to determine its new aerodynamic characteristics.',
       },
       engine: {
         title: 'Engine',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'A relatively safe and technologically accessible fuel was selected for Commodore. The combustion chamber is made of aluminum and steel. For the design process, we developed software for semi-automated design, and production was handled entirely by club members.',
       },
       parachute: {
         title: 'Parachute Compartment',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'Due to the low expected apogee, a design featuring a single hexagonal parachute was chosen. It is made of ripstop nylon and reinforced threads.',
       },
       pyro: {
         title: 'Pyro',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'Upon reaching apogee, an electrical signal ignites a pyrotechnic charge and splits the rocket into two parts to deploy a parachute for a smooth landing. The design is engineered to ensure reliable deployment despite the rough tolerances of the manufacturing process.',
       },
       avionics: {
         title: 'Electronics Bay',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: 'The first generation of our electronics is designed to monitor all key parameters of the rocket. These include location, acceleration, engine and nose temperatures, the status of the electronics, and other critical parameters. It records the data on an SD card and transmits it via a telecommunications link. It consists of an onboard computer, a power supply, a GNSS module, and a data acquisition module.',
       },
       nose: {
         title: 'Nose',
-        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+        body: "The rocket's nose is designed based on the LD-HAACK profile, which has been modified for the low speeds predicted by our simulations. The new shape has undergone additional CFD analysis to determine its aerodynamic characteristics.",
       },
     },
     partners: 'Partners',
@@ -180,5 +180,4 @@ export const en = {
   },
 };
 
-/** Shape every locale dictionary must satisfy. English is the source of truth. */
 export type UiDictionary = typeof en;

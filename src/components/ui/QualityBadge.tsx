@@ -5,10 +5,6 @@ import { useQualityTier } from '@/lib/use-quality-tier';
 
 const FPS_EVERY_MS = 500;
 
-/**
- * Corner readout for measurement runs: tier, score, how the tier was chosen
- * and a rolling frame rate. Mounted only behind `flags.qualityDebug`.
- */
 export function QualityBadge() {
   const tier = useQualityTier();
   const [fps, setFps] = useState(0);

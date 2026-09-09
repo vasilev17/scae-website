@@ -8,8 +8,6 @@ import {
 
 import { type RocketView } from '@/lib/rocket';
 
-// Workshop paint from the real airframe. CAD black is RGB 0,0,0, which cannot
-// catch light, so the satin black is lifted just enough to hold a highlight.
 const PAINT = {
   black: { color: '#2a2a2a', roughness: 0.36, metalness: 0 },
   grey: { color: '#6e6e72', roughness: 0.48, metalness: 0.12 },

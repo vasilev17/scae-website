@@ -22,8 +22,6 @@ type ExhibitHotspotsProps = {
   open: boolean;
   // Portrait phone: the rocket stands nose-up, so the axis runs vertically.
   portrait: boolean;
-  // The exhibit bobs only on a continuous frame loop. Elsewhere the rocket
-  // is parked and one layout pass per resize is the whole job.
   bob: boolean;
   copy: RocketHotspotCopy;
 };
@@ -55,11 +53,6 @@ function clampCard(root: HTMLElement, pin: HTMLDivElement | undefined) {
   card.style.setProperty('--card-shift-y', `${dy}px`);
 }
 
-/**
- * Callout markers pinned to the section cut. They ride the same geometry the
- * x-ray plate does, so a marker sits on its part at any stage size, in either
- * orientation, and through the float.
- */
 export function ExhibitHotspots({
   open,
   portrait,
@@ -71,12 +64,8 @@ export function ExhibitHotspots({
   const [active, setActive] = useState<RocketHotspotId | null>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
-  // Which stage quadrant each marker landed in, so its card opens into the
-  // free half instead of off the edge. Written by the layout pass.
   const [sides, setSides] = useState<Record<string, string>>({});
 
-  // Toggling the cut drops any open card, so the next section view starts
-  // clean. Adjusted in render rather than an effect: no wasted commit.
   const [lastOpen, setLastOpen] = useState(open);
   if (lastOpen !== open) {
     setLastOpen(open);
@@ -91,8 +80,6 @@ export function ExhibitHotspots({
     let width = 0;
     let height = 0;
 
-    // Transforms only: the bob runs this every frame, and React has no say
-    // in where a marker sits.
     const place = (float: boolean) => {
       if (width === 0 || height === 0) return;
       for (const spot of ROCKET_HOTSPOTS) {
@@ -105,16 +92,11 @@ export function ExhibitHotspots({
       if (openId) clampCard(root, pinsRef.current.get(openId));
     };
 
-    // Which way each card unfolds. The bob cannot change this, so it is
-    // settled once per measure rather than once per frame.
     const flank = () => {
       if (width === 0 || height === 0) return;
       const next: Record<string, string> = {};
       ROCKET_HOTSPOTS.forEach((spot, index) => {
         const point = hotspotPoint(spot, width, height, portrait);
-        // Upright, every marker shares one vertical and picking by position
-        // would send all six cards the same way. Alternate instead, the way
-        // an exploded-view drawing fans its callouts.
         const left = portrait ? index % 2 === 1 : point.x > width * 0.5;
         next[spot.id] =
           (left ? 'left' : 'right') +
@@ -164,8 +146,6 @@ export function ExhibitHotspots({
       event.preventDefault();
       setActive(null);
     };
-    // The layer only takes the pointer on its own markers and cards, so a
-    // click anywhere else in the exhibit is a dismiss.
     const onDown = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && rootRef.current?.contains(target)) return;

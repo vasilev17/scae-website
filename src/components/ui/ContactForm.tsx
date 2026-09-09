@@ -46,10 +46,6 @@ type SubmitState =
 
 type ButtonStatus = 'idle' | 'loading' | 'error';
 
-// One submission per panel per browser. The two keys are independent, so a
-// visitor gets one general message *and* one application. `scae_applied` keeps
-// its name from the coming-soon site — anyone who applied there already carries
-// it, and renaming would hand them a second application.
 const SUBMITTED_KEY: Record<ContactTab, string> = {
   general: 'scae_contacted',
   application: 'scae_applied',
@@ -57,28 +53,15 @@ const SUBMITTED_KEY: Record<ContactTab, string> = {
 const BUTTON_RESET_MS = 2500;
 const APPLY_SUBJECT_PREFIX = '🚀 Нова СКАИ кандидатура за членство от ';
 
-// The promise hCaptcha hands back must never be left unsettled: one that hangs
-// pins the button in its loading state, and nothing short of a reload gets the
-// form back. Two deadlines, because the two waits are nothing alike — getting a
-// challenge on screen is the widget's job and should be quick, while solving it
-// is the visitor's and should not be rushed. `onOpen` is the handover.
 const CAPTCHA_HANDSHAKE_MS = 20_000;
 const CAPTCHA_SOLVE_MS = 120_000;
 
-// Reasons that mean "the visitor backed out" rather than "the widget broke".
-// hCaptcha sends `challenge-closed`; the rest come from react-hcaptcha
-// cancelling an execute that is still pending.
 const CAPTCHA_CANCELLED = new Set([
   'challenge-closed',
   'hcaptcha-closed',
   'closed',
 ]);
 
-/**
- * hCaptcha rejects with a bare string (`'network-error'`), react-hcaptcha with
- * an Error, and the odd build with `{ error }`. Flatten all three so the reason
- * can be compared and logged.
- */
 function captchaReason(error: unknown): string {
   if (typeof error === 'string') return error;
   if (error instanceof Error) return error.message;
@@ -136,8 +119,6 @@ export function ContactForm({
     reset,
     formState: { errors },
   } = useForm<ContactValues>({
-    // useForm re-reads its options on every render, so this closure always
-    // validates against the schema for the panel that is currently open.
     resolver: (values, context, options) =>
       zodResolver(schema)(values, context, options),
     mode: 'onChange',
@@ -168,20 +149,10 @@ export function ContactForm({
     pulseError();
   };
 
-  // A token is single-use, and resetCaptcha() also cancels whatever execute is
-  // still in flight — so this may only run once an attempt has settled.
   const resetCaptcha = () => {
     captchaRef.current?.resetCaptcha();
   };
 
-  /**
-   * `execute({ async: true })` is the entire handshake: react-hcaptcha queues
-   * the call when the widget has not finished rendering, resolves with the
-   * token once the challenge passes, and rejects with hCaptcha's own reason
-   * when it is closed or fails. The hand-rolled onVerify/onClose promise this
-   * replaces had to guess at the widget's ready state, and reset it from the
-   * close handler — which cancelled the challenge that was still opening.
-   */
   const requestToken = (): Promise<string> => {
     const widget = captchaRef.current;
     if (!widget) return Promise.reject(new Error('captcha-not-mounted'));
@@ -201,8 +172,6 @@ export function ContactForm({
         run();
       };
 
-      // Until the overlay is up the widget is on the clock; once it is, the
-      // visitor is, and they get the long deadline.
       onCaptchaOpen.current = () => arm(CAPTCHA_SOLVE_MS);
       arm(CAPTCHA_HANDSHAKE_MS);
 
@@ -256,8 +225,6 @@ export function ContactForm({
       token = await requestToken();
     } catch (error) {
       const reason = captchaReason(error);
-      // The reason is the only thing separating "visitor dismissed the overlay"
-      // from "the widget never got a challenge", so keep it visible.
       console.error('hCaptcha execute failed:', reason, error);
       resetCaptcha();
       fail(
@@ -275,10 +242,6 @@ export function ContactForm({
       [HONEYPOT_FIELD]: values[HONEYPOT_FIELD] ?? '',
       [CAPTCHA_FIELD]: token,
     };
-    // Only `_subject`. Formspree treats underscore-prefixed keys as directives
-    // — `_subject` sets the notification email's subject line and is not kept
-    // as submission data — while a plain `subject` would be stored and listed
-    // as a field, which there is no input for.
     if (applying) {
       payload.social = values.social ?? '';
       payload._subject = `${APPLY_SUBJECT_PREFIX}${values.name}`;
@@ -287,8 +250,6 @@ export function ContactForm({
     }
 
     const result = await submitForm(formId, payload);
-    // Formspree burns the token whether or not it accepts the payload, so a
-    // retry needs a fresh challenge either way.
     resetCaptcha();
 
     if (result.status === 'ok') {
@@ -299,9 +260,6 @@ export function ContactForm({
       return;
     }
 
-    // submitForm has already logged the status and Formspree's own `detail`.
-    // That text is for us, not the visitor — it carries trace ids and error
-    // codes — so the panel keeps the localized copy.
     fail(copy.errors.generic);
   };
 
@@ -314,9 +272,6 @@ export function ContactForm({
         pulseError();
         return;
       }
-      // trigger() only reports validity. The schema's trim/lowercase live in
-      // its parsed output, so read the values back through it rather than
-      // posting the raw fields.
       const parsed = schema.safeParse(getValues());
       if (!parsed.success) {
         pulseError();
@@ -474,9 +429,6 @@ export function ContactForm({
               onOpen={() => {
                 onCaptchaOpen.current?.();
               }}
-              // The rest is diagnostics — requestToken owns the flow. These put
-              // hCaptcha's own reason code in the console, which is the only
-              // way to tell a closed challenge from a broken one.
               onError={(event) => {
                 console.error('hCaptcha error:', event);
               }}

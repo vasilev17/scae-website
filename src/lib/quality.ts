@@ -1,16 +1,3 @@
-/**
- * Runtime quality policy. Pure functions, no React.
- *
- * The device is scored once from cheap signals, the score picks a tier, and
- * every GPU / DOM surface reads its budget from that tier. A later FPS probe
- * may drop one tier. Nothing ever upgrades, so the page cannot oscillate.
- *
- * `?tier=` and sessionStorage win over detection so a phone can be forced
- * into any tier for a demo or a measurement run. `?tier=auto` clears both,
- * and a forced run carries the corner readout so the tier in effect is
- * visible without a rebuild.
- */
-
 import { PHONE_QUERY } from '@/lib/viewport';
 
 export type QualityTier = 'high' | 'medium' | 'low' | 'fallback';
@@ -137,9 +124,6 @@ export function qualityBudget(tier: QualityTier): QualityBudget {
 
 export const QUALITY_STORAGE_KEY = 'scae-quality-tier';
 
-// Score thresholds. A Moto-class Android (narrow, coarse, 4 GB) lands `low`,
-// a current iPhone (narrow, coarse, memory hidden) lands `medium`, a laptop
-// on a software rasteriser lands `medium` unless it is also short on RAM.
 const LOW_AT = 4;
 const MEDIUM_AT = 2;
 
@@ -251,8 +235,6 @@ type NetworkInfo = {
   effectiveType?: string;
 };
 
-// `navigator.connection`, `deviceMemory` and `hardwareConcurrency` are not in
-// every browser's lib.dom, so they are read off an untyped view of navigator.
 function navigatorField(key: string): unknown {
   const nav: unknown = navigator;
   if (!nav || typeof nav !== 'object' || !(key in nav)) return undefined;
@@ -286,8 +268,6 @@ function readQualitySignals(probe: GlProbe): QualitySignals {
     probe.ok && (probe.maxTexture < 4096 || probe.maxRenderbuffer < 4096);
 
   const coarse = window.matchMedia('(pointer: coarse)').matches;
-  // A phone turned sideways is still a phone: on touch screens the short
-  // side of the screen counts, not the current viewport width.
   const shortSide = Math.min(window.screen.width, window.screen.height);
   const narrow =
     window.matchMedia(PHONE_QUERY).matches || (coarse && shortSide <= 767);
@@ -303,11 +283,6 @@ function readQualitySignals(probe: GlProbe): QualitySignals {
   };
 }
 
-/**
- * Pressure score. Positive = weaker device. The two negative adjustments only
- * apply to fine-pointer machines: phone SoCs report 8 cores too, and that
- * number says nothing about their GPU.
- */
 export function scoreQuality(signals: QualitySignals): number {
   let score = 0;
   score += signals.narrow;
@@ -338,11 +313,6 @@ function readQueryTier(): QualityTier | 'auto' | null {
   return isQualityTier(value) ? value : null;
 }
 
-/**
- * Corner readout without a rebuild. A `?tier=` load is a measurement run by
- * definition, so it carries the badge; `?quality=debug` asks for it on an
- * otherwise untouched URL. Not stored: drop the param and the badge goes.
- */
 export function isQualityDebugRequested(): boolean {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
@@ -417,11 +387,6 @@ export function subscribeQualityTier(listener: Listener): () => void {
   };
 }
 
-/**
- * The runtime probe's only move. Never lands on `fallback`, and never
- * overrides an explicit `?tier=`: a forced tier is a measurement
- * instrument, so a slow frame must not silently retune it.
- */
 export function downgradeQualityTier(fps: number): QualityTier | null {
   const current = getQualityResolution();
   if (current.source === 'query') return null;
@@ -438,11 +403,6 @@ export function downgradeQualityTier(fps: number): QualityTier | null {
   return next;
 }
 
-/**
- * Median frames-per-second over `sampleMs`, measured in short windows so one
- * long frame (shader compile, GC) cannot sink the whole sample. Resolves null
- * when the tab was hidden, which stalls rAF and is not a slow GPU.
- */
 export function sampleFps(sampleMs = FPS_SAMPLE_MS): Promise<number | null> {
   return new Promise((resolve) => {
     if (typeof document === 'undefined' || document.hidden) {

@@ -1,22 +1,3 @@
-// Source: https://reactbits.dev/components/lanyard  Adapted: 2026-09-07
-//
-// Rapier rope + spherical card joint, unchanged from upstream: three rope
-// joints of length 1 hang off a fixed anchor, and the card swings from the
-// last one. Camera sits closer than the documented 26 so the badge fills
-// the contact column instead of floating in empty canvas; ContactBadge
-// scales that distance with the canvas so the framing survives. `<Canvas
-// camera>` is only a first-frame hint — CameraRig writes the live distance.
-//
-// Upstream drags inside a column-sized canvas, which drops the card as soon
-// as the cursor leaves it. Here the canvas covers the viewport and passes
-// the pointer through, and the contact section feeds it events, so the card
-// can be thrown anywhere on screen while the page stays clickable.
-//
-// Both card faces are printed into the atlas by scripts/build-badge-model.mjs,
-// so there is no runtime compositing. That script must not quantize the mesh:
-// upstream mounts `nodes.card.geometry` without its node transform, and
-// quantization parks the dequant scale on the node.
-
 import { Environment, Lightformer, useGLTF, useTexture } from '@react-three/drei';
 import {
   Canvas,
@@ -82,11 +63,6 @@ const SEGMENT: RigidBodyProps = {
   linearDamping: 4,
 };
 
-/**
- * A backgrounded tab keeps the clock running while rAF stops, so the first
- * frame back reports the whole absence as one delta. Rapier clamps its own
- * step; the band smoothing has to clamp too or the curve is thrown off screen.
- */
 const MAX_DELTA = 1 / 20;
 
 // World-space travel past this, or a NaN, means the rope exploded. Snap home.
@@ -95,9 +71,6 @@ const EXPLODE = 80;
 // Group lift. Rest locals below are relative to this.
 const GROUP_Y = 4;
 
-// Rope length 1 per joint, and the spherical joint hangs the card 1.45 under
-// the last one. Starting on that solution costs nothing and spares the reader
-// the sideways whip the upstream demo opens with.
 const REST_POSE = {
   j1: [0, -1, 0],
   j2: [0, -2, 0],
@@ -105,9 +78,6 @@ const REST_POSE = {
   card: [0, -4.45, 0],
 } as const satisfies Record<string, [number, number, number]>;
 
-// MeshLineMaterial reads `resolution` in its constructor, so args have to stay
-// referentially stable or every render rebuilds the material. The live canvas
-// size is copied onto the uniform each frame.
 const STRAP_ARGS: [MeshLineMaterialParameters] = [
   { resolution: new Vector2(1, 1) },
 ];
@@ -147,17 +117,12 @@ export function BadgeLanyard({
     <Canvas
       className="badge-lanyard-canvas"
       camera={{ position, fov }}
-      // The canvas covers the viewport now, so the badge is paid for in far
-      // more pixels than it used to be; density gives way before frames do.
       dpr={[1, compact ? 1.25 : 1.75]}
       frameloop={running ? 'always' : 'never'}
       eventSource={pointerSource}
       gl={{ alpha: true }}
       onCreated={(state) => {
         state.gl.setClearColor(new Color(0x000000), 0);
-        // Events arrive from the section, so the default offsetX/offsetY is
-        // measured against whichever element the pointer happens to be over.
-        // Re-base on the canvas rect, which stays right off the canvas too.
         state.setEvents({
           compute(event, root) {
             const rect = root.gl.domElement.getBoundingClientRect();
@@ -298,8 +263,6 @@ function Band({
     dir: new Vector3(),
   }).current;
 
-  // Neither Draco nor Meshopt: the build script leaves the geometry plain so
-  // the node transforms stay identity.
   const { nodes, materials } = useGLTF(badgeUrl, false, false);
   const strap = useTexture(lanyardImage ?? strapUrl);
 
@@ -340,8 +303,6 @@ function Band({
 
   useEffect(() => {
     if (!onReady) return undefined;
-    // Two frames: joints exist, strap resolution is copied from the canvas,
-    // then the printed stand-in can go. One frame early shows a 1×1 strap.
     let inner = 0;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => onReady());
@@ -352,8 +313,6 @@ function Band({
     };
   }, [onReady]);
 
-  // The grip belongs to the card, not to the canvas around it, and it has to
-  // survive a drag crossing text fields and links, so it rides on <html>.
   useEffect(() => {
     if (!hovered && !dragged) return;
     const root = document.documentElement;
@@ -363,8 +322,6 @@ function Band({
     };
   }, [hovered, dragged]);
 
-  // Capture can vanish on a breakpoint swap or a tab hide. Drop the kinematic
-  // lock so the card is not left floating where the pointer died.
   useEffect(() => {
     if (!dragged) return undefined;
     const letGo = () => drag(false);
@@ -405,8 +362,6 @@ function Band({
       snapRope(j1.current, j2.current, j3.current, card.current);
     }
 
-    // Catmull-Rom through the raw joint positions jitters, so the two middle
-    // control points chase their bodies instead of snapping to them.
     for (const joint of [j1.current, j2.current]) {
       const lerped = getLerped(joint);
       const gap = Math.max(
@@ -524,11 +479,6 @@ type PointerCapture = {
   releasePointerCapture: (id: number) => void;
 };
 
-/**
- * R3F swaps `target` for a capture shim it never reflects in the DOM event
- * type the handler inherits. Capturing through it hands the pointer to the
- * canvas, so the card keeps the grip once the cursor leaves it.
- */
 function grip(event: ThreeEvent<PointerEvent>): PointerCapture {
   return event.target as unknown as PointerCapture;
 }

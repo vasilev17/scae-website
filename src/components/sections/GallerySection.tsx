@@ -39,7 +39,6 @@ type CardPair = {
 
 type OverlayOrigin = { x: number; y: number };
 
-// Source: Codegrid cards-reveal-scroll-animation  Adapted: 2026-09-08
 const CARD_TRAVEL = [
   { leftX: -800, rightX: 800, leftRot: -30, rightRot: 30, y: 100 },
   { leftX: -900, rightX: 900, leftRot: -20, rightRot: 20, y: -150 },
@@ -85,9 +84,6 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
   const [overlayMounted, setOverlayMounted] = useState(false);
   const [origin, setOrigin] = useState<OverlayOrigin>({ x: 0, y: 0 });
   const rows = pairImages(images);
-  // Below the top tier the mark is painted once and left alone: the dot loop
-  // repaints several thousand arcs a frame for a hover nobody on a phone can
-  // perform anyway.
   const budget = useQualityBudget();
 
   const closeTimer = useRef(0);
@@ -134,7 +130,7 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
           gsap.utils
             .toArray<HTMLElement>('.gallery-row')
             .forEach((row, index) => {
-              const travel = CARD_TRAVEL[index];
+              const travel = CARD_TRAVEL[index % CARD_TRAVEL.length];
               const left = row.querySelector('.gallery-card-left');
               const right = row.querySelector('.gallery-card-right');
               if (!travel || !(left instanceof HTMLElement)) return;
@@ -213,8 +209,6 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
             dropoutStrength={0}
             interactive={budget.pixelLoop}
             imageScale={0.78}
-            // The emblem's navy disc sits 2.4% right and 0.9% high of the
-            // middle of its own file. This puts it back in the middle.
             imageOffsetX={-0.024}
             imageOffsetY={0.009}
             distortionStrength={1.5}
@@ -228,8 +222,6 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
             tintStrength={0.15}
           />
         </div>
-        {/* No visible heading here by design, but the section still needs a
-            name and a place in the heading outline. */}
         <h2 className="gallery-title" id="gallery-title">
           {copy.title}
         </h2>

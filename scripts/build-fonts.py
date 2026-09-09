@@ -1,14 +1,3 @@
-"""Subset the licensed TTF sources into web-ready WOFF2 files.
-
-The design uses Plateia Bold for display type and Disket Mono for technical
-labels. Both ship as full TTFs, which are far too heavy to serve directly, so
-they are subset to the character sets the site actually renders (Latin plus
-Cyrillic for the Bulgarian locale) and recompressed as WOFF2.
-
-Requires: pip install fonttools brotli
-Run: python scripts/build-fonts.py
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

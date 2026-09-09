@@ -1,19 +1,14 @@
 import { useEffect, useMemo } from 'react';
 import { ExtrudeGeometry, MeshStandardMaterial, Shape } from 'three';
 
-// Model metres. Tube radius is 0.055. Plate is a tall narrow trapezoid:
-// U-notch to the centreline, taper to a wider base.
 const RADIUS = 0.0565;
 const TOP_HALF = 0.062;
 const BASE_HALF = 0.095;
 export const STAND_HEIGHT = 0.145;
 const THICKNESS = 0.018;
 
-// Fins end at y = 0.17. Nose shoulder is at y = 0.965.
-// Left/right along the airframe (screen X after exhibit pose).
 const AFT_Y = 0.325;
 const FWD_Y = 0.92;
-// Up/down in model metres. +Y = up.
 const STAND_LIFT = 0;
 // Pitch around world X, radians. + = tip toward camera.
 const STAND_TILT_X = 0.15;

@@ -1,24 +1,3 @@
-/**
- * Turns the Onshape assembly export into a web-ready rocket model.
- *
- * Onshape writes one primitive per CAD face, which lands at ~385 draw calls,
- * keeps every node transform live, and stands the rocket along +Z with the
- * origin somewhere inside the airframe. This bakes all of that down: faces
- * are merged per part, the mesh is re-oriented nose-up along +Y, centred on
- * its own axis with the tail at y = 0, and the buffers are Meshopt-compressed.
- *
- * KEEP_NAMED_PARTS (default true) leaves the 9 CAD parts as separate nodes
- * so the hero can explode them. Set false and rebuild to restore the old
- * one-blob, join-by-material model. The previous blob is also kept as
- * src/assets/generated/rocket-joined.glb.
- *
- * The section-view export is joined by material (no explode) and transformed
- * with the *assembled* orientation matrix so both GLBs share one frame.
- * The axial stud (`шпилка`) stays its own mesh so exhibit paint can tint it.
- *
- * Run: node scripts/build-rocket-model.mjs
- */
-
 import { mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,10 +33,6 @@ const SECTION_OUT_FILE = path.join(OUT_DIR, 'rocket-section.glb');
 // false = old join-by-material blob. true = 9 independently movable parts.
 const KEEP_NAMED_PARTS = true;
 
-/**
- * Onshape part names → stable ids the scene looks up. Match is on the node
- * name, or a parent "occurrence of …" name that still contains the CAD string.
- */
 // Section internals kept out of the material join so runtime paint can hit them.
 const SECTION_STEEL = {
   шпилка: 'stud',
@@ -75,10 +50,6 @@ const PART_IDS = {
   'Part 1': 'nose',
 };
 
-/**
- * Column-major transform taking the CAD frame (nose along +Z, arbitrary origin)
- * to ours (nose along +Y, tail at the origin, centred on the other two axes).
- */
 function orientation(bounds) {
   const centerX = (bounds.min[0] + bounds.max[0]) / 2;
   const centerY = (bounds.min[1] + bounds.max[1]) / 2;
@@ -160,16 +131,10 @@ function translation(dx, dy, dz) {
   return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, dx, dy, dz, 1];
 }
 
-// Cut half sits on +Z after orientation (toward the camera). Flip it to
-// -Z so the exhibit looks into the bay, not at the outer skin.
 function faceCamera() {
   return [-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1];
 }
 
-/**
- * Section export lives in a shifted Onshape occurrence. Slide it onto the
- * assembled fuselage in CAD space, using the cut face as the tube axis.
- */
 function sectionAlign(assembled, section) {
   const full = meshBounds(assembled, 'фузелаж');
   const cut = meshBounds(section, 'фузелаж');

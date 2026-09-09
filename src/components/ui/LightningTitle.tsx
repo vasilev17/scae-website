@@ -1,6 +1,3 @@
-// Source: https://threeui.com/backgrounds/elements/elemental-lightning  Adapted: 2026-09-08
-// Lightning variant of ElementsCollection, rasterizing the gallery headline.
-
 import { useEffect, useState } from 'react';
 
 import { ElementsCollection } from '@/components/ui/elements/ElementsCollection';
@@ -50,8 +47,6 @@ export function LightningTitle({ text }: LightningTitleProps) {
   }, [motion]);
 
   const showFx = motion === 'ok' && fontFaceCss.length > 0;
-  // The h2 is uppercased by CSS; canvas text is not, so the rasterized mark
-  // has to be uppercased here or the two states read as different titles.
   const markText = text.toLocaleUpperCase();
 
   return (

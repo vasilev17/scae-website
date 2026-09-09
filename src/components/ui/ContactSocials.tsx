@@ -43,11 +43,6 @@ const ICONS: Record<SocialIcon, ComponentType<GlyphProps>> = {
   email: Mail,
 };
 
-/**
- * Comms array: one diamond node per channel, strung on a hairline bus with a
- * pulse running down it. The labels stay readable — the diamonds are
- * decoration, not the affordance.
- */
 export function ContactSocials({ title, label, links }: ContactSocialsProps) {
   return (
     <section className="contact-socials" aria-label={label}>

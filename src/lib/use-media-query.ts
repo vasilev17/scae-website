@@ -1,10 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-/**
- * Live `matchMedia` result. Server and hydration renders report `fallback`
- * so the markup agrees with the server, then the first client render swaps in
- * the real answer without a mismatch.
- */
 export function useMediaQuery(query: string, fallback = false): boolean {
   const subscribe = useCallback(
     (onChange: () => void) => {

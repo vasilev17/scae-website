@@ -1,8 +1,3 @@
-// Source: https://threeui.com/source-code/elemental-lightning.json  Adapted: 2026-09-08
-// Host boundary around elemental-marks.html. Renderer stays authored; this file
-// focuses one panel, applies the registered detail patches, and can swap the
-// lightning mark for rasterized title text.
-
 import {
   useCallback,
   useEffect,
@@ -73,8 +68,6 @@ const BASE_PARTICLES: Record<ElementVariant, number> = {
   fire: 560,
 };
 
-// Fraction of the sdf a rasterized title spans, and the cap on its type size
-// so a short title does not outgrow the headline it stands in for.
 const MARK_FILL = 0.88;
 const MARK_CAP = 0.076;
 
@@ -88,9 +81,6 @@ function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-// Template literals normalise CRLF to LF, so the multi-line patches below only
-// match once the raw source is normalised too -- otherwise they all silently
-// no-op on a CRLF checkout.
 function applyDetailPatches(source: string) {
   return DETAIL_PATCHES.reduce(
     (document, [original, enhanced]) => document.replace(original, enhanced),
@@ -126,9 +116,6 @@ const MARK_TEXT = ${JSON.stringify(markText)};
       'function buildLogo(path) {',
       `${rasterize}function buildLogo(path) {`,
     )
-    // A title is wide and short, so lay the square sdf across the panel's
-    // width; the authored fit sizes it to the panel's height, which on a
-    // headline strip leaves the type a few pixels tall.
     .replace('const fit = Math.min(a, 1);', 'const fit = a;')
     .replace(
       'const logos = {',

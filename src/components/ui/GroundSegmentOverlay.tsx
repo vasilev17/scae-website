@@ -52,8 +52,8 @@ export function GroundSegmentOverlay({
       onClose={onClose}
     >
       <CardContainer containerClassName="mission-card-wrap py-0">
-        <CardBody className="ground-card h-auto w-[min(64rem,94vw)] max-w-none">
-          <div className="ground-card-copy">
+        <CardBody className="ground-card grid h-auto w-[min(56rem,92vw)] max-w-none grid-cols-1">
+          <div className="ground-card-copy flex min-h-0 min-w-0 flex-col">
             <CardItem translateZ={40} className="mission-card-icon-wrap">
               <SatelliteDish aria-hidden="true" className="mission-card-icon" />
             </CardItem>
@@ -73,7 +73,7 @@ export function GroundSegmentOverlay({
               {copy.launchBody}
             </CardItem>
           </div>
-          <div className="ground-card-media">
+          <div className="ground-card-media grid min-h-0 min-w-0 grid-cols-2">
             {stand ? (
               <CardItem translateZ={80} className="ground-card-photo w-full">
                 <PhotoTrigger

@@ -1,5 +1,3 @@
-// Source: https://ui.aceternity.com/components/background-ripple-effect  Adapted: 2026-08-23
-
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';

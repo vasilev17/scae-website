@@ -1,12 +1,3 @@
-/**
- * Section-view callouts: one marker per part the cut opens up.
- *
- * Authored in the rocket's own frame so a single set of numbers serves both
- * the horizontal exhibit and the upright portrait band. `u` runs the long
- * axis, 0 at the aft-most point of the silhouette to 1 at the nose tip; `v`
- * is the lateral offset in rocket-lengths, +v toward the model's +X side.
- */
-
 import {
   EXHIBIT_ROCKET_POSE,
   exhibitFloat,
@@ -44,10 +35,6 @@ export const ROCKET_HOTSPOTS: readonly RocketHotspot[] = [
 
 export type HotspotPoint = { x: number; y: number };
 
-/**
- * Marker centre in stage CSS pixels. `float` folds in the exhibit bob, so a
- * frame loop can re-place the markers without a fresh measure.
- */
 export function hotspotPoint(
   spot: RocketHotspot,
   stageW: number,

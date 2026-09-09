@@ -8,15 +8,6 @@ const tick = (time: number) => {
   rafId = requestAnimationFrame(tick);
 };
 
-/**
- * Page-wide smooth scroll, created on first access. The layout script and any
- * island can both call this in either order and share the one instance.
- *
- * Lenis rides the browser's own scroll, so pinning, sticky, anchors, keyboard
- * navigation and scroll restoration keep working. Reduced motion is handled
- * inside Lenis: smoothing drops out while the instance keeps running, so
- * scroll-driven scenes stay in sync.
- */
 export function getSmoothScroll(): Lenis {
   if (lenis) return lenis;
 
@@ -29,10 +20,6 @@ export function getSmoothScroll(): Lenis {
   return lenis;
 }
 
-/**
- * Hands the frame loop to an external ticker (GSAP's, on pages that animate),
- * so scroll position and scroll-driven tweens settle in the same frame.
- */
 export function stopInternalRaf(): void {
   if (rafId === null) return;
   cancelAnimationFrame(rafId);

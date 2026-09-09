@@ -1,7 +1,3 @@
-// Source: https://inspira-ui.com/docs/en/components/backgrounds/flickering-grid  Adapted: 2026-09-04
-// Vue original ported to React: same canvas recipe, our tokens and cn().
-// Extra: major-cell lattice + pointer-follow glow.
-
 import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -11,12 +7,9 @@ type FlickeringGridProps = {
   squareSize?: number;
   gridGap?: number;
   flickerChance?: number;
-  /** CSS color, `var(--token)`, or omit to use `--color-accent`. */
   color?: string;
   maxOpacity?: number;
-  /** Brighten every Nth row/col as a lattice. 0 = off. */
   majorEvery?: number;
-  /** Cells glow around the pointer. Off under reduced motion. */
   interactive?: boolean;
 };
 
@@ -47,11 +40,6 @@ function readToken(el: Element, value: string | undefined, fallback: string) {
   return value;
 }
 
-/**
- * Canvas grid whose cells randomly change opacity. Optional lattice ticks
- * and a pointer-follow glow. Paints only while on screen; static under
- * reduced motion.
- */
 export function FlickeringGrid({
   className,
   squareSize = 4,

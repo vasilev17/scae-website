@@ -21,10 +21,6 @@ type ExhibitSectionProps = {
   sectionRef: RefObject<SectionState>;
 };
 
-/**
- * CAD section cut, baked in the assembled rocket's frame. Lazy-loaded so
- * the flyby canvas does not pay for this GLB.
- */
 export function ExhibitSection({ view, sectionRef }: ExhibitSectionProps) {
   const gltf = useLoader(GLTFLoader, sectionUrl, withMeshopt);
   const groupRef = useRef<Group>(null);

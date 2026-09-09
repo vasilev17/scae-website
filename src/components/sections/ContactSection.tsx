@@ -21,8 +21,6 @@ export function ContactSection({
   logoSrc,
   socialLinks,
 }: ContactSectionProps) {
-  // The badge canvas passes the pointer through, so the section is what hears
-  // the drag: anywhere in here counts as grabbing the badge it is over.
   const sectionRef = useRef<HTMLElement>(null!);
 
   return (

@@ -58,9 +58,6 @@ import {
 import { paintRocketMaterial, setCutOpacity } from '@/lib/rocket-paint';
 import { ROCKET_PORTAL } from '@/lib/rocket-portal';
 
-// Built by scripts/build-rocket-model.mjs: nose up along +Y, tail on the
-// origin, Meshopt-compressed. Wired by hand rather than drei's useGLTF, which
-// attaches a Draco decoder fetched from a gstatic CDN.
 function withMeshopt(loader: GLTFLoader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
 }
@@ -110,11 +107,6 @@ type ExhibitShadowProps = {
   layer: number;
 };
 
-// Depth pass ignores opacity, so one map per silhouette. Opacity follows
-// `cut` in useFrame and matches the 0.4s section crossfade.
-// Infinity: drei bakes `frames={1}` on the first tick, often before this
-// camera sees layer 1, and a later React render recaptures while the hull
-// is hidden. Keep sampling so the parked rocket always has a map.
 function ExhibitShadow({ shadowRef, layer }: ExhibitShadowProps) {
   useFrame(() => {
     maskShadowCamera(shadowRef.current, layer);
@@ -134,8 +126,6 @@ function ExhibitShadow({ shadowRef, layer }: ExhibitShadowProps) {
   );
 }
 
-// Nose this far down the viewport. Low enough that the orange band clears the
-// bottom pane — a black-only crop reads as a hole in the starfield.
 const NOSE_TIP = 0.5;
 
 function FlybyLights() {
@@ -154,8 +144,6 @@ function FlybyLights() {
 }
 
 type ExhibitRigProps = {
-  // Lightformer environment is a PMREM pass. `medium` and `low` run on the
-  // direct lights alone and lift the fill a little to cover for it.
   environment: boolean;
 };
 
@@ -247,10 +235,7 @@ type RocketProps = {
   view: RocketView;
   sectionRef: RefObject<SectionState>;
   shadows: boolean;
-  // Time-based bob only makes sense on a continuous loop. On demand the
-  // exhibit parks dead level so a frame is never owed to the clock.
   bob: boolean;
-  // Portrait phone: the exhibit stands nose-up and fills the stage height.
   portrait: boolean;
 };
 
@@ -314,8 +299,6 @@ function Rocket({
     };
   }, [invalidate, materials]);
 
-  // Orientation flips re-pose the parked exhibit. `low` renders on demand,
-  // so the new pose has to ask for its frame.
   useEffect(() => {
     invalidate();
   }, [invalidate, portrait]);
@@ -324,15 +307,11 @@ function Rocket({
     const group = groupRef.current;
     if (!group || height === 0) return;
     const { lift, tilt, spin, explode } = poseRef.current;
-    // Scale rides the pose, so it belongs here rather than in render: the
-    // flyby bound follows a tilt that only ever moves on a ref.
     group.scale.setScalar(
       (view === 'exhibit'
         ? exhibitRocketLength(viewport.width, viewport.height, portrait)
         : flybyRocketLength(viewport.width, viewport.height, tilt)) / height,
     );
-    // Pivot is the airframe centre. Rest parks that centre so the nose still
-    // sits at NOSE_TIP; lift 1 puts it on the viewport origin.
     const restY = -viewport.height * NOSE_TIP;
     if (view === 'exhibit') {
       if (!EXHIBIT_STANDS && bob) {
@@ -434,8 +413,6 @@ type InvalidateBridgeProps = {
   running: boolean;
 };
 
-// Hands this canvas's `invalidate` to the pose drivers (GSAP scrub, cut
-// tween, intro entry). Only matters on `demand`, but it is cheap everywhere.
 function InvalidateBridge({ running }: InvalidateBridgeProps) {
   const invalidate = useThree((state) => state.invalidate);
   useEffect(() => registerRocketInvalidate(invalidate), [invalidate]);
@@ -450,10 +427,7 @@ type RocketSceneProps = {
   view?: RocketView;
   sectionRef?: RefObject<SectionState>;
   tier: QualityTier;
-  // Page-level "this canvas is worth a frame": the flyby is covered once the
-  // portal closes, the exhibit once the void field is up.
   running?: boolean;
-  // Exhibit only: stand the rocket nose-up (portrait phone stage).
   portrait?: boolean;
 };
 
@@ -467,14 +441,9 @@ export function RocketScene({
 }: RocketSceneProps) {
   const cutRef = sectionRef ?? { current: REST_SECTION };
   const budget = qualityBudget(tier);
-  // Context attributes are fixed at creation, so a runtime tier drop keeps
-  // the antialias / preserve settings the boot tier chose. dpr, lights and
-  // the frame loop follow the live tier.
   const [glAttributes] = useState(() => ({
     antialias: budget.antialias,
     alpha: true,
-    // Both readers are `high`-only: the dissolve overlay samples the flyby
-    // canvas, the x-ray samples the exhibit canvas.
     preserveDrawingBuffer:
       ROCKET_PORTAL && (view === 'flyby' ? budget.dissolve : budget.exhibitFx),
   }));
