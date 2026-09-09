@@ -6,8 +6,12 @@
  * may drop one tier. Nothing ever upgrades, so the page cannot oscillate.
  *
  * `?tier=` and sessionStorage win over detection so a phone can be forced
- * into any tier for a demo or a measurement run. `?tier=auto` clears both.
+ * into any tier for a demo or a measurement run. `?tier=auto` clears both,
+ * and a forced run carries the corner readout so the tier in effect is
+ * visible without a rebuild.
  */
+
+import { PHONE_QUERY } from '@/lib/viewport';
 
 export type QualityTier = 'high' | 'medium' | 'low' | 'fallback';
 
@@ -286,8 +290,7 @@ function readQualitySignals(probe: GlProbe): QualitySignals {
   // side of the screen counts, not the current viewport width.
   const shortSide = Math.min(window.screen.width, window.screen.height);
   const narrow =
-    window.matchMedia('(max-width: 767px)').matches ||
-    (coarse && shortSide <= 767);
+    window.matchMedia(PHONE_QUERY).matches || (coarse && shortSide <= 767);
 
   return {
     narrow: narrow ? 1 : 0,
@@ -333,6 +336,17 @@ function readQueryTier(): QualityTier | 'auto' | null {
   const value = new URLSearchParams(window.location.search).get('tier');
   if (value === 'auto') return 'auto';
   return isQualityTier(value) ? value : null;
+}
+
+/**
+ * Corner readout without a rebuild. A `?tier=` load is a measurement run by
+ * definition, so it carries the badge; `?quality=debug` asks for it on an
+ * otherwise untouched URL. Not stored: drop the param and the badge goes.
+ */
+export function isQualityDebugRequested(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('quality') === 'debug' || params.has('tier');
 }
 
 /** Classify. Order: query, session, detection. Runs once per page load. */

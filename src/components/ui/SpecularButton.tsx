@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { CSSProperties, MouseEventHandler, ReactNode, Ref } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
 
-import { getQualityTier, qualityBudget } from '@/lib/quality';
+import { useQualityBudget } from '@/lib/use-quality-tier';
 
 export type SpecularButtonProps = {
   ref?: Ref<HTMLButtonElement>;
@@ -148,6 +148,9 @@ export function SpecularButton({
 }: SpecularButtonProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const fxRef = useRef<HTMLSpanElement>(null);
+  // Subscribed, not read once: when the FPS probe drops the tier these
+  // contexts are among the first the page can give back.
+  const specular = useQualityBudget().specular;
   // The shader needs the element too, so a caller's ref is merged in rather
   // than handed the node exclusively.
   const setButtonRef = useCallback(
@@ -195,9 +198,10 @@ export function SpecularButton({
     const fx = fxRef.current;
     if (!btn || !fx) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // One WebGL2 context per button is a `high` luxury. Lower tiers keep the
-    // CSS glass and the static stroke from the stylesheet.
-    if (!qualityBudget(getQualityTier()).specular) return;
+    // One WebGL2 context per button is a `high` luxury, and the page mounts
+    // several. Lower tiers keep the CSS glass and the static stroke from the
+    // stylesheet.
+    if (!specular) return;
 
     const dpr = window.devicePixelRatio || 1;
 
@@ -367,7 +371,7 @@ export function SpecularButton({
       if (gl.canvas.parentNode === fx) fx.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, []);
+  }, [specular]);
 
   return (
     <button

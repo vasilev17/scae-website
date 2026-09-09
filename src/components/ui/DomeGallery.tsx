@@ -94,9 +94,9 @@ function buildItems(pool: DomeImage[], seg: number): ItemDef[] {
   });
 
   const totalSlots = coords.length;
-  if (pool.length === 0) {
-    return coords.map((c) => ({ ...c, src: '', alt: '' }));
-  }
+  // No images means no tiles. Filling the sphere with `src=""` makes the
+  // browser re-request the document once per slot.
+  if (pool.length === 0) return [];
 
   const usedImages = Array.from(
     { length: totalSlots },

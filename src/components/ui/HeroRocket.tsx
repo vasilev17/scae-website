@@ -19,6 +19,8 @@ type HeroRocketProps = {
   view?: RocketView;
   sectionRef?: RefObject<SectionState>;
   running?: boolean;
+  // Exhibit on a portrait phone: nose-up, sized to the stage height.
+  portrait?: boolean;
 };
 
 type RocketSceneComponent = ComponentType<{
@@ -27,6 +29,7 @@ type RocketSceneComponent = ComponentType<{
   sectionRef?: RefObject<SectionState>;
   tier: QualityTier;
   running?: boolean;
+  portrait?: boolean;
 }>;
 
 /**
@@ -46,6 +49,7 @@ export function HeroRocket({
   view = 'flyby',
   sectionRef,
   running = true,
+  portrait = false,
 }: HeroRocketProps) {
   const tier = useQualityTier();
   const [Scene, setScene] = useState<RocketSceneComponent | null>(null);
@@ -92,6 +96,7 @@ export function HeroRocket({
         sectionRef={sectionRef}
         tier={tier}
         running={running}
+        portrait={portrait}
       />
     </Suspense>
   );
@@ -102,7 +107,8 @@ type RocketPosterProps = {
 };
 
 // Baked by scripts/build-rocket-poster.mjs from the same GLB, lights and
-// paint. The stylesheet parks each frame where the live scene would.
+// paint. The stylesheet parks each frame where the live scene would, and
+// turns the exhibit frame upright on portrait phones.
 function RocketPoster({ view }: RocketPosterProps) {
   const exhibit = view === 'exhibit';
   return (

@@ -10,25 +10,32 @@ import {
   syncCanvasSize,
 } from '@/components/ui/xray-runtime';
 import {
-  EXHIBIT_FILL,
-  EXHIBIT_HULL_SLENDERNESS,
-  EXHIBIT_X,
   EXHIBIT_XRAY_HIT_PAD,
   EXHIBIT_XRAY_HOLE,
   EXHIBIT_STANDS,
   exhibitFloat,
-  exhibitRocketY,
+  exhibitRocketLength,
+  exhibitRocketOffset,
+  exhibitRocketTilt,
   exhibitXrayBox,
+  ROCKET_SLENDERNESS,
 } from '@/lib/rocket';
+
+type ExhibitFxProps = {
+  // Mirrors the stage: nose-up rocket, plate and hit box turn with it.
+  portrait: boolean;
+};
 
 /**
  * Hover X-ray: a pixelated noisy hole tracks the pointer and stamps a
  * soft cyan blueprint of the internals over the exhibit rocket.
  */
-export function ExhibitFx() {
+export function ExhibitFx({ portrait }: ExhibitFxProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Orientation is a dependency, not a ref: a flip rebakes the plate, which
+  // is rare enough that the simpler effect wins.
   useEffect(() => {
     const root = rootRef.current;
     const canvas = canvasRef.current;
@@ -64,15 +71,23 @@ export function ExhibitFx() {
 
     const imageBox = (width: number, height: number) => {
       if (!plate || plate.width === 0) return null;
-      return exhibitXrayBox(width, height, plate.height / plate.width);
+      return exhibitXrayBox(
+        width,
+        height,
+        plate.height / plate.width,
+        portrait,
+      );
     };
 
     const hullBox = (width: number, height: number) => {
-      const hullW = width * EXHIBIT_FILL;
-      const hullH = hullW * EXHIBIT_HULL_SLENDERNESS;
+      const length = exhibitRocketLength(width, height, portrait);
+      const girth = length * ROCKET_SLENDERNESS;
+      const hullW = portrait ? girth : length;
+      const hullH = portrait ? length : girth;
+      const offset = exhibitRocketOffset(portrait);
       return {
-        x: width * 0.5 - hullW * 0.5 + EXHIBIT_X * width,
-        y: height * 0.5 - hullH * 0.5 - exhibitRocketY() * height,
+        x: width * 0.5 - hullW * 0.5 + offset.x * width,
+        y: height * 0.5 - hullH * 0.5 - offset.y * height,
         w: hullW,
         h: hullH,
       };
@@ -146,7 +161,7 @@ export function ExhibitFx() {
         imgH: layout.imgH,
         rocketCx: layout.rocketCx,
         rocketCy: layout.rocketCy,
-        pitch: exhibitFloat.pitch,
+        pitch: exhibitFloat.pitch + exhibitRocketTilt(portrait),
         rocket: stageCanvas(),
         tint,
       });
@@ -228,7 +243,7 @@ export function ExhibitFx() {
       window.removeEventListener('pointerleave', leave);
       window.removeEventListener('resize', onResize);
     };
-  }, []);
+  }, [portrait]);
 
   return (
     <div ref={rootRef} className="rocket-exhibit-xray" aria-hidden="true">

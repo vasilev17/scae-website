@@ -213,9 +213,8 @@ export function GallerySection({ copy, logoSrc, images }: GallerySectionProps) {
             dropoutStrength={0}
             interactive={budget.pixelLoop}
             imageScale={0.78}
-            // The emblem's navy disc -- the shape the eye centres on inside
-            // the ring -- sits 2.4% right and 0.9% high of the middle of its
-            // own file. This puts it back in the middle of the circle.
+            // The emblem's navy disc sits 2.4% right and 0.9% high of the
+            // middle of its own file. This puts it back in the middle.
             imageOffsetX={-0.024}
             imageOffsetY={0.009}
             distortionStrength={1.5}

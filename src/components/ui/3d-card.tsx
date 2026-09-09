@@ -12,7 +12,9 @@ import {
   type SetStateAction,
 } from 'react';
 
+import { useMediaQuery } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
+import { FINE_POINTER_QUERY } from '@/lib/viewport';
 
 type MouseEnterContextValue = [boolean, Dispatch<SetStateAction<boolean>>];
 
@@ -48,10 +50,13 @@ export function CardContainer({
 }: CardContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMouseEntered, setIsMouseEntered] = useState(false);
+  // Touch reads the card flat. A tap fires emulated mouse events, so the tilt
+  // would snap on and stay there, and the 3D layers sit on top of a scroller.
+  const canTilt = useMediaQuery(FINE_POINTER_QUERY);
 
   const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
     const el = containerRef.current;
-    if (!el || prefersReducedMotion()) return;
+    if (!el || !canTilt || prefersReducedMotion()) return;
     const { left, top, width, height } = el.getBoundingClientRect();
     const x = ((event.clientX - left - width / 2) / 25) * hoverScale;
     const y = ((event.clientY - top - height / 2) / 25) * hoverScale;
@@ -59,6 +64,7 @@ export function CardContainer({
   };
 
   const handleMouseEnter = () => {
+    if (!canTilt) return;
     setIsMouseEntered(true);
   };
 
@@ -77,7 +83,7 @@ export function CardContainer({
             'flex items-center justify-center py-20',
             containerClassName,
           )}
-          style={{ perspective: '1000px' }}
+          style={{ perspective: canTilt ? '1000px' : 'none' }}
         >
           <div
             ref={containerRef}
@@ -88,7 +94,7 @@ export function CardContainer({
               'relative flex items-center justify-center transition-transform duration-200 ease-linear',
               className,
             )}
-            style={{ transformStyle: 'preserve-3d' }}
+            style={{ transformStyle: canTilt ? 'preserve-3d' : 'flat' }}
           >
             {children}
           </div>

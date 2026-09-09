@@ -63,17 +63,25 @@ export const REST_SECTION: SectionState = { cut: 0 };
 export const EXHIBIT_LAYER_HULL = 1;
 export const EXHIBIT_LAYER_CUT = 2;
 
-// Coarse reject only. Real hit is the WebGL silhouette (body + fins).
-export const EXHIBIT_HULL_SLENDERNESS = 0.32;
+// Fins-to-fins over nose-to-tail. Coarse reject for the x-ray hit (the real
+// hit is the WebGL silhouette), and the cross-axis term when a tilted
+// airframe is fitted to the viewport.
+export const ROCKET_SLENDERNESS = 0.32;
 
 // Extra CSS pixels around the silhouette so thin fin edges still count.
 export const EXHIBIT_XRAY_HIT_PAD = 6;
 
-// Horizontal exhibit fills this fraction of the viewport width.
+// Horizontal exhibit fills this fraction of the stage width.
 export const EXHIBIT_FILL = 0.88;
 
+// Share of the stage height the rocket may take: its long axis when it
+// stands nose-up on a portrait phone, its fins-to-fins height when the
+// stage is a short landscape band. Full-viewport stages never hit this cap.
+export const EXHIBIT_FILL_HEIGHT = 0.92;
+
 // Nudge the exhibit so the name overlay clears the cradles, and so the
-// fin-heavy tail does not pull the silhouette left of centre.
+// fin-heavy tail does not pull the silhouette left of centre. Horizontal
+// only: the upright rocket is centred in its band.
 export const EXHIBIT_X = 0.0125;
 export const EXHIBIT_Y = 0.0125;
 
@@ -84,12 +92,73 @@ export const EXHIBIT_SHADOWS = false;
 export const EXHIBIT_FLOAT_AMP = 0.012;
 export const EXHIBIT_FLOAT_PERIOD = 5;
 // Extra tilt (radians). Velocity of the bob, so the nose leads.
-export const EXHIBIT_FLOAT_PITCH = 0.010;
+export const EXHIBIT_FLOAT_PITCH = 0.01;
 
 export const exhibitFloat = { y: 0, pitch: 0 };
 
 export function exhibitRocketY() {
   return EXHIBIT_Y + exhibitFloat.y;
+}
+
+/** Nose-to-tail length on screen, in the stage's own units (px or world). */
+export function exhibitRocketLength(
+  stageW: number,
+  stageH: number,
+  portrait: boolean,
+): number {
+  if (portrait) return stageH * EXHIBIT_FILL_HEIGHT;
+  return Math.min(
+    stageW * EXHIBIT_FILL,
+    (stageH * EXHIBIT_FILL_HEIGHT) / ROCKET_SLENDERNESS,
+  );
+}
+
+// Keeps the fins off the side edges once the airframe swings diagonal.
+const FLYBY_MARGIN = 0.92;
+
+/**
+ * Flyby length. Fills the viewport height while the rocket stands, then the
+ * width takes over as it tilts: a 320px screen cannot carry a screen-tall
+ * airframe across its own diagonal. Wide viewports never reach that bound,
+ * so the desktop flyby keeps its full height.
+ */
+export function flybyRocketLength(
+  viewW: number,
+  viewH: number,
+  tilt: number,
+): number {
+  const across =
+    Math.abs(Math.sin(tilt)) + ROCKET_SLENDERNESS * Math.abs(Math.cos(tilt));
+  return Math.min(viewH, (viewW * FLYBY_MARGIN) / across);
+}
+
+/**
+ * Airframe centre offset from the stage centre, as a fraction of the stage.
+ * +x right, +y up, the same frame RocketScene positions the group in.
+ */
+export function exhibitRocketOffset(portrait: boolean) {
+  const base = exhibitRocketBaseOffset(portrait);
+  return {
+    x: base.x,
+    y: base.y + exhibitFloat.y,
+  };
+}
+
+/**
+ * The same centre with the bob taken out. DOM laid over the rocket measures
+ * from here on a resize and rides the float itself, so a layout pass and a
+ * bob frame never fight over the same numbers.
+ */
+export function exhibitRocketBaseOffset(portrait: boolean) {
+  return {
+    x: portrait ? 0 : EXHIBIT_X,
+    y: portrait ? 0 : EXHIBIT_Y,
+  };
+}
+
+/** Extra roll around the airframe centre that stands the exhibit nose-up. */
+export function exhibitRocketTilt(portrait: boolean) {
+  return portrait ? Math.PI / 2 : 0;
 }
 
 // Internals ride the 3D rocket. SCALE = PNG width / rocket length.
@@ -111,15 +180,21 @@ export type ExhibitXrayBox = {
   rocketCy: number;
 };
 
-/** Screen box for the internals PNG, locked to the exhibit rocket. */
+/**
+ * Screen box for the internals PNG, locked to the exhibit rocket. Authored
+ * in the horizontal frame: the painter rotates it about the rocket centre by
+ * `exhibitRocketTilt` when the rocket stands upright.
+ */
 export function exhibitXrayBox(
   viewW: number,
   viewH: number,
   plateAspect: number,
+  portrait: boolean,
 ): ExhibitXrayBox {
-  const rocketW = viewW * EXHIBIT_FILL;
-  const rocketCx = viewW * 0.5 + EXHIBIT_X * viewW;
-  const rocketCy = viewH * 0.5 - exhibitRocketY() * viewH;
+  const rocketW = exhibitRocketLength(viewW, viewH, portrait);
+  const offset = exhibitRocketOffset(portrait);
+  const rocketCx = viewW * 0.5 + offset.x * viewW;
+  const rocketCy = viewH * 0.5 - offset.y * viewH;
   const imgW = rocketW * EXHIBIT_XRAY_SCALE;
   const imgH = imgW * plateAspect;
   return {

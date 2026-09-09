@@ -1,9 +1,11 @@
 import {
+  Component,
   lazy,
   Suspense,
   useEffect,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from 'react';
 
@@ -43,6 +45,9 @@ export function ContactBadge({
   const stageRef = useRef<HTMLDivElement>(null);
   const [field, setField] = useState<HTMLDivElement | null>(null);
   const [spread, setSpread] = useState(1);
+  const [framed, setFramed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [dead, setDead] = useState(false);
   const [grabbable, setGrabbable] = useState(false);
   const [inView, setInView] = useState(false);
   const [seen, setSeen] = useState(false);
@@ -82,9 +87,13 @@ export function ContactBadge({
 
     const sync = () => {
       const base = stage.clientHeight;
-      if (base > 0) setSpread(field.clientHeight / base);
+      const tall = field.clientHeight;
+      if (base <= 0 || tall <= 0) return;
+      setSpread(tall / base);
+      setFramed(true);
     };
 
+    sync();
     const observer = new ResizeObserver(sync);
     observer.observe(stage);
     observer.observe(field);
@@ -93,7 +102,13 @@ export function ContactBadge({
 
   // Rapier + a third R3F canvas only on `high`. Lower tiers keep the printed
   // card, which is also what reduced-motion readers get.
-  const live = seen && !reduced && budget.lanyard;
+  const live = seen && !reduced && budget.lanyard && !dead;
+
+  if (!live && (framed || ready || grabbable)) {
+    setFramed(false);
+    setReady(false);
+    setGrabbable(false);
+  }
 
   return (
     <div className="contact-badge" ref={slotRef}>
@@ -105,20 +120,25 @@ export function ContactBadge({
         aria-label={alt}
       >
         {live ? (
-          <Suspense fallback={<BadgePoster logoSrc={logoSrc} />}>
-            <div className="contact-badge-field" ref={setField}>
-              <BadgeLanyard
-                running={inView}
-                position={[0, 0, SLOT_DISTANCE * spread]}
-                gravity={[0, -40, 0]}
-                pointerSource={pointerSource}
-                onHoverChange={setGrabbable}
-              />
-            </div>
-          </Suspense>
-        ) : (
-          <BadgePoster logoSrc={logoSrc} />
-        )}
+          <BadgeGate onError={() => setDead(true)}>
+            <Suspense fallback={null}>
+              <div className="contact-badge-field" ref={setField}>
+                {framed ? (
+                  <BadgeLanyard
+                    running={inView}
+                    position={[0, 0, SLOT_DISTANCE * spread]}
+                    gravity={[0, -40, 0]}
+                    pointerSource={pointerSource}
+                    onHoverChange={setGrabbable}
+                    onReady={() => setReady(true)}
+                    onContextLost={() => setDead(true)}
+                  />
+                ) : null}
+              </div>
+            </Suspense>
+          </BadgeGate>
+        ) : null}
+        {!live || !ready ? <BadgePoster logoSrc={logoSrc} /> : null}
       </div>
     </div>
   );
@@ -133,4 +153,30 @@ function BadgePoster({ logoSrc }: { logoSrc: string }) {
       </span>
     </div>
   );
+}
+
+type BadgeGateProps = {
+  children: ReactNode;
+  onError: () => void;
+};
+
+/**
+ * React only reports render errors from a class. A throw inside the lazy
+ * Rapier tree would otherwise take the contact form down with it.
+ */
+class BadgeGate extends Component<BadgeGateProps, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.failed) return null;
+    return this.props.children;
+  }
 }

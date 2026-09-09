@@ -189,7 +189,9 @@ export function GalleryOverlay({
       </div>
       <div className="gallery-overlay-stage">
         {reduceMotion ? (
-          <div className="gallery-overlay-grid">
+          // data-lenis-prevent: a stopped Lenis cancels wheel and touch
+          // page-wide, so this grid has to opt its own scroller out.
+          <div className="gallery-overlay-grid" data-lenis-prevent>
             {images.map((image) => (
               <figure className="gallery-overlay-item" key={image.src}>
                 <img

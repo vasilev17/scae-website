@@ -56,8 +56,38 @@ export const en = {
         'A launching stand will reuse this architecture so pad operations stay remote, instrumented, and fail-safe as the vehicle moves from static fire to flight.',
       standAlt: 'Engine test stand in the SCAE workshop',
       padAlt: 'Commodore hardware on the exhibit stand',
+      expandPhoto: 'Open photo',
+      closePhoto: 'Close photo',
     },
     exhibitFx: 'Interactive interior view of the Commodore rocket',
+    sectionPoints: {
+      close: 'Close callout',
+      open: 'Open callout',
+      fins: {
+        title: 'Fins',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      engine: {
+        title: 'Engine',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      parachute: {
+        title: 'Parachute Compartment',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      pyro: {
+        title: 'Pyro',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      avionics: {
+        title: 'Electronics Bay',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      nose: {
+        title: 'Nose',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+    },
     partners: 'Partners',
     partnersAria: 'Industry and academic partners',
     aboutClub: 'About the Club',
@@ -113,8 +143,7 @@ export const en = {
       messageLong: 'Message is too long (max 2000 chars)',
       generic: 'Something went wrong. Please try again.',
       captchaCancelled: 'The captcha was closed. Please try again.',
-      captchaFailed:
-        'The captcha could not be completed. Please try again.',
+      captchaFailed: 'The captcha could not be completed. Please try again.',
       alreadySubmitted: {
         general: 'You have already sent us a message.',
         application: 'You have already submitted an application.',
@@ -148,14 +177,6 @@ export const en = {
     cta: 'See gallery',
     close: 'Close gallery',
     logoAlt: 'SCAE emblem',
-    alts: {
-      workshop: 'SCAE workspace with a rocket model and simulation stations',
-      exhibit: 'Commodore recovery and interior exhibit view',
-      launch: 'Rocket climbing through cloud after liftoff',
-      vehicle: 'Launch vehicle on the pad at dusk',
-      orbit: 'Earth limb seen from orbit',
-      earth: 'Planet Earth from space',
-    },
   },
 };
 

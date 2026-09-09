@@ -3,15 +3,6 @@
  * pixelated noisy hole that follows the pointer.
  */
 
-import {
-  EXHIBIT_FILL,
-  EXHIBIT_HULL_SLENDERNESS,
-  EXHIBIT_X,
-  EXHIBIT_XRAY_HIT_PAD,
-  exhibitFloat,
-  exhibitRocketY,
-} from '@/lib/rocket';
-
 export const XRAY_CELL = 12;
 
 function hash2(x: number, y: number): number {
@@ -430,48 +421,12 @@ export function hitRocketSilhouette(
 
   const { canvas, ctx } = scratch;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(
-    rocket,
-    sx,
-    sy,
-    sw,
-    sh,
-    0,
-    0,
-    canvas.width,
-    canvas.height,
-  );
+  ctx.drawImage(rocket, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   for (let i = 3; i < pixels.length; i += 4) {
     if ((pixels[i] ?? 0) > HULL_HIT_ALPHA) return true;
   }
   return false;
-}
-
-/** True when the pointer sits on exhibit mesh, not empty WebGL pixels. */
-export function pointerOverRocketMesh(
-  rocket: HTMLCanvasElement | null,
-  cssX: number,
-  cssY: number,
-  cssW: number,
-  cssH: number,
-): boolean {
-  if (!rocket || cssW <= 0 || cssH <= 0) return false;
-  const hullW = cssW * EXHIBIT_FILL;
-  const hullH = hullW * EXHIBIT_HULL_SLENDERNESS;
-  const x = cssW * 0.5 - hullW * 0.5 + EXHIBIT_X * cssW;
-  const y = cssH * 0.5 - hullH * 0.5 - exhibitRocketY() * cssH;
-  if (cssX < x || cssX > x + hullW || cssY < y || cssY > y + hullH) {
-    return false;
-  }
-  return hitRocketSilhouette(
-    rocket,
-    cssX,
-    cssY,
-    cssW,
-    cssH,
-    EXHIBIT_XRAY_HIT_PAD,
-  );
 }
 
 export function syncCanvasSize(

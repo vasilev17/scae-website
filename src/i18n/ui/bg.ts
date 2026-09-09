@@ -59,8 +59,38 @@ export const bg: UiDictionary = {
         'Стартова площадка ще ползва същата архитектура, за да останат операциите на площадката дистанционни, инструментирани и устойчиви на отказ при прехода от статичен огън към полет.',
       standAlt: 'Стенд за двигатели в работилницата на СКАИ',
       padAlt: 'Хардуер на Commodore върху изложбения стенд',
+      expandPhoto: 'Отвори снимката',
+      closePhoto: 'Затвори снимката',
     },
     exhibitFx: 'Интерактивен поглед към вътрешността на ракетата Commodore',
+    sectionPoints: {
+      close: 'Затвори описанието',
+      open: 'Отвори описанието',
+      fins: {
+        title: 'Стабилизатори',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      engine: {
+        title: 'Двигател',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      parachute: {
+        title: 'Парашутен отсек',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      pyro: {
+        title: 'Пирозаряд',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      avionics: {
+        title: 'Електронен отсек',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+      nose: {
+        title: 'Носов конус',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+      },
+    },
     partners: 'Партньори',
     partnersAria: 'Индустриални и академични партньори',
     aboutClub: 'За клуба',
@@ -150,14 +180,5 @@ export const bg: UiDictionary = {
     cta: 'Виж галерията',
     close: 'Затвори галерията',
     logoAlt: 'Емблема на СКАИ',
-    alts: {
-      workshop:
-        'Работно пространство на СКАИ с модел на ракета и станции за симулации',
-      exhibit: 'Изглед към възстановяването и вътрешността на Commodore',
-      launch: 'Ракета се издига през облак след старт',
-      vehicle: 'Ракета на стартовата площадка при здрач',
-      orbit: 'Ръбът на Земята, видян от орбита',
-      earth: 'Планетата Земя от космоса',
-    },
   },
 };

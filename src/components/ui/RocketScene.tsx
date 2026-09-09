@@ -29,17 +29,18 @@ import { ROCKET_MARK_ENABLED, RocketMark } from '@/components/ui/RocketMark';
 import { RocketStands, STAND_HEIGHT } from '@/components/ui/RocketStand';
 import { qualityBudget, type QualityTier } from '@/lib/quality';
 import {
-  EXHIBIT_FILL,
   EXHIBIT_FLOAT_AMP,
   EXHIBIT_FLOAT_PERIOD,
   EXHIBIT_FLOAT_PITCH,
   exhibitFloat,
   EXHIBIT_LAYER_CUT,
   EXHIBIT_LAYER_HULL,
+  exhibitRocketLength,
+  exhibitRocketOffset,
+  exhibitRocketTilt,
+  flybyRocketLength,
   EXHIBIT_SHADOWS,
   EXHIBIT_STANDS,
-  EXHIBIT_X,
-  EXHIBIT_Y,
   registerRocketInvalidate,
   REST_SECTION,
   type RocketPose,
@@ -249,9 +250,18 @@ type RocketProps = {
   // Time-based bob only makes sense on a continuous loop. On demand the
   // exhibit parks dead level so a frame is never owed to the clock.
   bob: boolean;
+  // Portrait phone: the exhibit stands nose-up and fills the stage height.
+  portrait: boolean;
 };
 
-function Rocket({ poseRef, view, sectionRef, shadows, bob }: RocketProps) {
+function Rocket({
+  poseRef,
+  view,
+  sectionRef,
+  shadows,
+  bob,
+  portrait,
+}: RocketProps) {
   const gltf = useLoader(GLTFLoader, rocketUrl, withMeshopt);
   const viewport = useThree((state) => state.viewport);
   const invalidate = useThree((state) => state.invalidate);
@@ -304,10 +314,23 @@ function Rocket({ poseRef, view, sectionRef, shadows, bob }: RocketProps) {
     };
   }, [invalidate, materials]);
 
+  // Orientation flips re-pose the parked exhibit. `low` renders on demand,
+  // so the new pose has to ask for its frame.
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, portrait]);
+
   useFrame(() => {
     const group = groupRef.current;
     if (!group || height === 0) return;
     const { lift, tilt, spin, explode } = poseRef.current;
+    // Scale rides the pose, so it belongs here rather than in render: the
+    // flyby bound follows a tilt that only ever moves on a ref.
+    group.scale.setScalar(
+      (view === 'exhibit'
+        ? exhibitRocketLength(viewport.width, viewport.height, portrait)
+        : flybyRocketLength(viewport.width, viewport.height, tilt)) / height,
+    );
     // Pivot is the airframe centre. Rest parks that centre so the nose still
     // sits at NOSE_TIP; lift 1 puts it on the viewport origin.
     const restY = -viewport.height * NOSE_TIP;
@@ -321,9 +344,9 @@ function Rocket({ poseRef, view, sectionRef, shadows, bob }: RocketProps) {
         exhibitFloat.y = 0;
         exhibitFloat.pitch = 0;
       }
-      group.position.x = viewport.width * EXHIBIT_X;
-      group.position.y =
-        viewport.height * EXHIBIT_Y + exhibitFloat.y * viewport.height;
+      const offset = exhibitRocketOffset(portrait);
+      group.position.x = viewport.width * offset.x;
+      group.position.y = viewport.height * offset.y;
       if (floatRef.current) {
         floatRef.current.rotation.z = exhibitFloat.pitch;
       }
@@ -331,7 +354,10 @@ function Rocket({ poseRef, view, sectionRef, shadows, bob }: RocketProps) {
       group.position.x = 0;
       group.position.y = restY * (1 - lift);
     }
-    if (tiltRef.current) tiltRef.current.rotation.z = tilt;
+    if (tiltRef.current) {
+      tiltRef.current.rotation.z =
+        view === 'exhibit' ? tilt + exhibitRocketTilt(portrait) : tilt;
+    }
     if (bodyRef.current) bodyRef.current.rotation.y = spin;
 
     const amount = ROCKET_DISASSEMBLE && Number.isFinite(explode) ? explode : 0;
@@ -365,13 +391,8 @@ function Rocket({ poseRef, view, sectionRef, shadows, bob }: RocketProps) {
 
   if (height === 0) return null;
 
-  const scale =
-    view === 'exhibit'
-      ? (viewport.width * EXHIBIT_FILL) / height
-      : viewport.height / height;
-
   return (
-    <group ref={groupRef} scale={scale}>
+    <group ref={groupRef}>
       <group ref={floatRef}>
         <group ref={tiltRef}>
           <group ref={bodyRef} position={[0, -height / 2, 0]}>
@@ -432,6 +453,8 @@ type RocketSceneProps = {
   // Page-level "this canvas is worth a frame": the flyby is covered once the
   // portal closes, the exhibit once the void field is up.
   running?: boolean;
+  // Exhibit only: stand the rocket nose-up (portrait phone stage).
+  portrait?: boolean;
 };
 
 export function RocketScene({
@@ -440,6 +463,7 @@ export function RocketScene({
   sectionRef,
   tier,
   running = true,
+  portrait = false,
 }: RocketSceneProps) {
   const cutRef = sectionRef ?? { current: REST_SECTION };
   const budget = qualityBudget(tier);
@@ -498,6 +522,7 @@ export function RocketScene({
             sectionRef={cutRef}
             shadows={EXHIBIT_SHADOWS && budget.shadows}
             bob={budget.frameloop === 'always'}
+            portrait={view === 'exhibit' && portrait}
           />
         </Suspense>
       </Canvas>

@@ -10,6 +10,10 @@ import {
 
 import { BackgroundRippleEffect } from '@/components/ui/BackgroundRippleEffect';
 import { ExhibitFx } from '@/components/ui/ExhibitFx';
+import {
+  ExhibitHotspots,
+  type RocketHotspotCopy,
+} from '@/components/ui/ExhibitHotspots';
 import { FlickeringGrid } from '@/components/ui/FlickeringGrid';
 import { HeroRocket } from '@/components/ui/HeroRocket';
 import {
@@ -33,8 +37,10 @@ import {
   invalidateRocketScenes,
   REST_SECTION,
 } from '@/lib/rocket';
+import { useMediaQuery } from '@/lib/use-media-query';
 import { useQualityBudget } from '@/lib/use-quality-tier';
 import { cn } from '@/lib/utils';
+import { EXHIBIT_PORTRAIT_QUERY } from '@/lib/viewport';
 
 type RocketExhibitProps = {
   name: string;
@@ -46,6 +52,7 @@ type RocketExhibitProps = {
   groundCopy: GroundSegmentCopy;
   groundPhotos: GroundSegmentPhoto[];
   fxLabel: string;
+  hotspotCopy: RocketHotspotCopy;
   fx: boolean;
   // The exhibit canvas is worth a frame from the zoom until the void field
   // covers it. The field runs only once it is up.
@@ -113,6 +120,7 @@ export function RocketExhibit({
   groundCopy,
   groundPhotos,
   fxLabel,
+  hotspotCopy,
   fx,
   rocketRunning,
   starsRunning,
@@ -130,6 +138,9 @@ export function RocketExhibit({
   const sectionRef = useRef({ ...REST_SECTION });
   const [cutOpen, setCutOpen] = useState(false);
   const budget = useQualityBudget();
+  // Same query as the stylesheet's band rules, so the rocket turns upright
+  // in the same frame the stage shrinks to its band.
+  const portrait = useMediaQuery(EXHIBIT_PORTRAIT_QUERY);
   const [missionOpen, setMissionOpen] = useState(false);
   const [missionMounted, setMissionMounted] = useState(false);
   const [missionOrigin, setMissionOrigin] = useState({ x: 0, y: 0 });
@@ -232,10 +243,23 @@ export function RocketExhibit({
             view="exhibit"
             sectionRef={sectionRef}
             running={rocketRunning}
+            portrait={portrait}
           />
         ) : null}
       </div>
-      {fx && !cutOpen && budget.exhibitFx ? <ExhibitFx /> : null}
+      {fx && !cutOpen && budget.exhibitFx ? (
+        <ExhibitFx portrait={portrait} />
+      ) : null}
+      {/* The cut is what the callouts annotate, so the fallback tier — which
+          never swaps in the section mesh — gets no markers. */}
+      {budget.webgl ? (
+        <ExhibitHotspots
+          open={cutOpen}
+          portrait={portrait}
+          bob={budget.frameloop === 'always'}
+          copy={hotspotCopy}
+        />
+      ) : null}
       <h2 className="rocket-exhibit-work">
         <span>{work}</span>
       </h2>

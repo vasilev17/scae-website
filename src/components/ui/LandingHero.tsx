@@ -14,6 +14,7 @@ import { HeroRocket } from '@/components/ui/HeroRocket';
 import { type PartnerLogo } from '@/components/ui/PartnersMarquee';
 import { QualityBadge } from '@/components/ui/QualityBadge';
 import { RocketExhibit } from '@/components/ui/RocketExhibit';
+import { type RocketHotspotCopy } from '@/components/ui/ExhibitHotspots';
 import type { MissionConceptCopy } from '@/components/ui/MissionConceptOverlay';
 import type {
   GroundSegmentCopy,
@@ -23,7 +24,6 @@ import { SeeMoreCue } from '@/components/ui/SeeMoreCue';
 import { SpecularButton } from '@/components/ui/SpecularButton';
 import { Starfield, type StarfieldWarp } from '@/components/ui/Starfield';
 import { setAnalyticsContext, track } from '@/lib/analytics';
-import { flags } from '@/lib/flags';
 import {
   GATE_CRACK_TRAVEL,
   GATE_INTERIOR_DELAY,
@@ -55,7 +55,8 @@ import {
   startInternalRaf,
   stopInternalRaf,
 } from '@/lib/smooth-scroll';
-import { useQualityTier } from '@/lib/use-quality-tier';
+import { useQualityDebug, useQualityTier } from '@/lib/use-quality-tier';
+import { PHONE_QUERY } from '@/lib/viewport';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -82,6 +83,7 @@ type LandingHeroProps = {
   exhibitGroundCopy: GroundSegmentCopy;
   exhibitGroundPhotos: GroundSegmentPhoto[];
   exhibitFxLabel: string;
+  exhibitHotspots: RocketHotspotCopy;
   partnersTitle: string;
   partnersAria: string;
   partnerLogos: PartnerLogo[];
@@ -172,7 +174,6 @@ const SCROLL_LENGTH = '+=471%';
 // Phones: same beats, a fifth less thumb travel. The hold copy is smaller
 // there, so the phase needs less distance to stay readable.
 const SCROLL_LENGTH_NARROW = '+=380%';
-const NARROW_QUERY = '(max-width: 767px)';
 
 // Exhibit canvas and (on `high`) the dissolve context warm up here, well
 // before the hole opens at DISSOLVE_AT.
@@ -349,6 +350,7 @@ export function LandingHero({
   exhibitGroundCopy,
   exhibitGroundPhotos,
   exhibitFxLabel,
+  exhibitHotspots,
   partnersTitle,
   partnersAria,
   partnerLogos,
@@ -389,6 +391,9 @@ export function LandingHero({
 
   const tier = useQualityTier();
   const budget = qualityBudget(tier);
+  // On behind `flags.qualityDebug`, and on for any `?tier=` / `?quality=debug`
+  // run so a forced tier can be read off the page without a rebuild.
+  const qualityDebug = useQualityDebug();
   // Read by scroll callbacks built once: a runtime tier drop swaps the shader
   // hole for the crossfade without rebuilding the timeline.
   const overlayOn = useRef(budget.dissolve);
@@ -582,10 +587,13 @@ export function LandingHero({
             // hero, then goes void, then yields to the contact screen.
             if (!(exhibit instanceof HTMLElement)) return;
             if (!(ascent instanceof HTMLElement)) return;
-            gsap.set('.rocket-exhibit-rail--left, .rocket-exhibit-rail--right', {
-              x: 0,
-              xPercent: 0,
-            });
+            gsap.set(
+              '.rocket-exhibit-rail--left, .rocket-exhibit-rail--right',
+              {
+                x: 0,
+                xPercent: 0,
+              },
+            );
             gsap.set('.rocket-exhibit-ray', {
               opacity: 1,
               xPercent: -50,
@@ -653,7 +661,7 @@ export function LandingHero({
 
           // Read once, not a matchMedia condition: a condition would revert
           // and replay the whole intro on every resize across the breakpoint.
-          const scrollLength = window.matchMedia(NARROW_QUERY).matches
+          const scrollLength = window.matchMedia(PHONE_QUERY).matches
             ? SCROLL_LENGTH_NARROW
             : SCROLL_LENGTH;
 
@@ -1126,10 +1134,7 @@ export function LandingHero({
    * Shuts the gate on the way in and reopens it on the way out, with the dial
    * held to the stretch where the panes are still. Ignored mid-transition.
    */
-  const slamPanes = (
-    source: 'gate' | 'hold',
-    onComplete: () => void,
-  ) => {
+  const slamPanes = (source: 'gate' | 'hold', onComplete: () => void) => {
     const gate = gateRef.current;
     if (!gate) return;
 
@@ -1150,11 +1155,7 @@ export function LandingHero({
     // Pane slam is the blend — flyby still writes scale every tick, so a
     // direct tween on the groups loses. Hold opener leaves the rocket
     // put; panes just close over the scene.
-    open.to(
-      menuGate.current,
-      { blend: 1, duration, ease: 'power2.inOut' },
-      0,
-    );
+    open.to(menuGate.current, { blend: 1, duration, ease: 'power2.inOut' }, 0);
     if (source === 'gate') {
       open.to(
         '.hero-rocket',
@@ -1400,6 +1401,7 @@ export function LandingHero({
             groundCopy={exhibitGroundCopy}
             groundPhotos={exhibitGroundPhotos}
             fxLabel={exhibitFxLabel}
+            hotspotCopy={exhibitHotspots}
             fx={exhibitFx}
             rocketRunning={exhibitLive}
             starsRunning={voidLive}
@@ -1460,7 +1462,7 @@ export function LandingHero({
         onNavigate={(item) => navigateTo(item.id)}
         centerIconSrc={menuIconSrc}
       />
-      {flags.qualityDebug ? <QualityBadge /> : null}
+      {qualityDebug ? <QualityBadge /> : null}
     </div>
   );
 }

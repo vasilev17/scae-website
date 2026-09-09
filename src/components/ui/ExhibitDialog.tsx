@@ -161,7 +161,11 @@ export function ExhibitDialog({
           <X aria-hidden="true" className="mission-overlay-x" />
         </SpecularButton>
       </div>
-      <div className="mission-overlay-stage">{children}</div>
+      {/* A stopped Lenis eats wheel and touchmove page-wide, so the panel has
+          to opt its own scroller out. */}
+      <div className="mission-overlay-stage" data-lenis-prevent>
+        {children}
+      </div>
     </div>,
     document.body,
   );

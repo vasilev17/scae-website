@@ -307,9 +307,11 @@
 
   .gate-nav {
     --nav-band-height: 10cqh;
-    --nav-button-height: 3.9cqh;
-    --nav-button-font: 1.35cqh;
-    --nav-icon-height: 1.35cqh;
+    /* cqh scales with a 1080 frame. A 568px phone would land the type at
+       8px and the icon at 7px, so the rem floors take over there. */
+    --nav-button-height: clamp(2rem, 3.9cqh, 4rem);
+    --nav-button-font: clamp(0.6875rem, 1.35cqh, 1.25rem);
+    --nav-icon-height: clamp(0.7rem, 1.35cqh, 1.2rem);
 
     position: absolute;
     inset-inline: 0;
@@ -319,8 +321,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-inline: calc(1.9792cqw + env(safe-area-inset-left))
-      calc(1.9792cqw + env(safe-area-inset-right));
+    padding-inline: calc(max(1.9792cqw, 0.75rem) + env(safe-area-inset-left))
+      calc(max(1.9792cqw, 0.75rem) + env(safe-area-inset-right));
     /* Revealed by GSAP once the panes have travelled out of view. */
     opacity: 0;
     pointer-events: auto;
@@ -343,10 +345,10 @@
     align-items: center;
     justify-content: center;
     width: max-content;
-    gap: 0.8cqw;
+    gap: max(0.8cqw, 0.4rem);
     height: var(--nav-button-height);
-    padding-inline: 1.2cqw;
-    border-radius: 0.7cqh;
+    padding-inline: max(1.2cqw, 0.7rem);
+    border-radius: max(0.7cqh, 0.3rem);
     box-shadow: 0 0.6cqh 2.8cqh rgb(33 33 33 / 0.22);
     font-family: var(--font-display);
     font-size: var(--nav-button-font);
@@ -419,10 +421,55 @@
     flex: 1;
   }
 
-  /* Narrow viewports cannot fit the wordmark beside the logo. */
+  /* Narrow viewports cannot fit the wordmark beside the logo. The flag
+     hangs off the wordmark's width, so it goes with it. */
   @media (max-width: 64rem) {
-    .gate-nav-title {
+    .gate-nav-title,
+    .gate-nav-flag {
       display: none;
+    }
+  }
+
+  /* Narrow phones: the cqh floors were sized for a tall screen and read as
+     slabs across 320px. Type, padding and radius come down; the band grows
+     so the 44px touch target stops filling it edge to edge. Plain cqh
+     numbers only: readGateGeometry parses the pane value with parseFloat. */
+  @media (max-width: 30rem) {
+    .gate-reveal {
+      --gate-rest-visible-top: 16cqh;
+    }
+
+    .gate-nav {
+      --nav-band-height: 12cqh;
+      --nav-button-height: clamp(1.65rem, 3.9cqh, 4rem);
+      --nav-button-font: clamp(0.5625rem, 1.35cqh, 1.25rem);
+      --nav-icon-height: clamp(0.55rem, 1.35cqh, 1.2rem);
+
+      padding-inline: calc(0.5rem + env(safe-area-inset-left))
+        calc(0.5rem + env(safe-area-inset-right));
+    }
+
+    .gate-nav-button {
+      gap: max(0.8cqw, 0.3rem);
+      padding-inline: max(1.2cqw, 0.5rem);
+      border-radius: 0.35rem;
+    }
+  }
+
+  /* Landscape phones: a 10cqh band is ~37px, under the 44px touch target,
+     and the resting pane shows only 13.8cqh. Both grow together so the
+     buttons still sit on visible metal. */
+  @media (max-height: 30rem) {
+    .gate-reveal {
+      --gate-rest-visible-top: 22cqh;
+    }
+
+    .gate-nav {
+      --nav-band-height: 18cqh;
+    }
+
+    .gate-nav-brand {
+      --nav-logo-size: calc(var(--nav-band-height) * 0.6);
     }
   }
 
@@ -724,12 +771,25 @@
     transform: translateX(-50%);
   }
 
+  /* Width tracks exhibitRocketLength: 88% of the stage, capped so the fins
+     fit 92% of a short band (0.92 / 0.32 slenderness = 287.5cqh). */
   .rocket-poster.rocket-poster--exhibit {
-    top: calc(50% - 1.25svh);
-    left: calc(50% + 1.25vw);
-    width: 88%;
+    top: 48.75%;
+    left: 51.25%;
+    width: min(88%, 287.5cqh);
     height: auto;
     transform: translate(-50%, -50%);
+  }
+
+  /* Portrait phone: the baked frame is horizontal, so it is turned upright
+     about its centre. Nose right becomes nose up. */
+  @media (max-width: 47.9375rem) and (orientation: portrait) {
+    .rocket-poster.rocket-poster--exhibit {
+      top: 50%;
+      left: 50%;
+      width: 92cqh;
+      transform: translate(-50%, -50%) rotate(-90deg);
+    }
   }
 
   /* Tier readout behind flags.qualityDebug. Above the menu (60). */
@@ -786,6 +846,11 @@
 
   .rocket-exhibit {
     --exhibit-veil-height: 38svh;
+    /* Stage insets. Zero on a desktop viewport: the rocket owns the frame.
+       Phones and short landscape windows pull them in so the title above
+       and the HUD below never share pixels with the airframe. */
+    --exhibit-stage-top: 0px;
+    --exhibit-stage-bottom: 0px;
 
     position: fixed;
     inset: 0;
@@ -1080,6 +1145,59 @@
     }
   }
 
+  /* Phones: title, marquee, photo and the club text outgrow a 568px screen
+     even at compact sizes, and the field is a fixed overlay the page scroll
+     cannot reveal. The layer scrolls natively instead. Lenis leaves touch
+     to the browser, so a swipe scrolls the panel first and the page once it
+     ends. Auto margins centre a panel that does fit. */
+  @media (max-width: 47.9375rem) {
+    .void-content {
+      justify-content: flex-start;
+      overflow-y: auto;
+      padding: calc(4svh + env(safe-area-inset-top)) 4vw
+        calc(4svh + env(safe-area-inset-bottom));
+      scrollbar-width: none;
+    }
+
+    .void-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .void-panel {
+      flex: 0 0 auto;
+      margin-block: auto;
+      border-radius: 1rem;
+    }
+
+    .void-backglow {
+      min-width: 20rem;
+      min-height: 20rem;
+      filter: blur(5rem);
+    }
+
+    .void-panel-body {
+      padding-block: 3.4svh 3svh;
+    }
+
+    .void-partners-title {
+      margin-bottom: 2svh;
+    }
+
+    .void-content .partners-marquee {
+      padding-block: 2svh 2.4svh;
+    }
+
+    .void-about {
+      padding: 3svh 5vw 0.4svh;
+    }
+
+    /* Wider crop: the photo's bottom third is floor and a 16/10 frame at
+       phone width eats a third of the screen. */
+    .void-about-media {
+      aspect-ratio: 21 / 10;
+    }
+  }
+
   .rocket-exhibit-space {
     position: absolute;
     inset: 0;
@@ -1163,10 +1281,18 @@
     opacity: 0.7;
   }
 
-  .rocket-exhibit-stage {
+  /* Stage and x-ray share one box: the x-ray samples the stage canvas by
+     normalised coordinates, so they must agree on where the rocket is.
+     Size containment gives the poster cqh units to size against. */
+  .rocket-exhibit-stage,
+  .rocket-exhibit-xray {
     position: absolute;
-    inset: 0;
+    inset: var(--exhibit-stage-top) 0 var(--exhibit-stage-bottom);
+  }
+
+  .rocket-exhibit-stage {
     z-index: 1;
+    container-type: size;
   }
 
   .rocket-exhibit-stage > * {
@@ -1175,10 +1301,17 @@
   }
 
   .rocket-exhibit-xray {
-    position: absolute;
-    inset: 0;
     z-index: 2;
     pointer-events: none;
+  }
+
+  /* Band stage. rem floors hold the title row and the stacked HUD on short
+     viewports where svh alone would squeeze them. */
+  @media (max-width: 47.9375rem), (max-height: 30rem) {
+    .rocket-exhibit {
+      --exhibit-stage-top: max(15svh, 5rem);
+      --exhibit-stage-bottom: max(30svh, 10rem);
+    }
   }
 
   .rocket-exhibit-xray-canvas {
@@ -1187,6 +1320,307 @@
     width: 100%;
     pointer-events: none;
     mix-blend-mode: screen;
+  }
+
+  /* Section-view callouts. The layer shares the stage box, so a marker's
+     translate is in the same frame the x-ray plate is laid out in. The
+     component writes each pin's translate; everything else lives here. */
+  .rocket-hotspots {
+    --hotspot-size: clamp(1.55rem, 4.4svh, 2.3rem);
+
+    position: absolute;
+    inset: var(--exhibit-stage-top) 0 var(--exhibit-stage-bottom);
+    z-index: 5;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition-property: opacity, visibility;
+    transition-duration: 260ms, 0s;
+    transition-timing-function: ease;
+    transition-delay: 0ms, 260ms;
+  }
+
+  /* Behind the cut crossfade, so the markers land on a section that is
+     already there rather than on the dissolving hull. */
+  .rocket-hotspots[data-open='true'] {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 180ms, 0s;
+  }
+
+  .rocket-exhibit.is-void .rocket-hotspots {
+    display: none !important;
+  }
+
+  .rocket-hotspot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* The open pin becomes its own layer so the card clears every other
+     marker, not just the dot it belongs to. */
+  .rocket-hotspot[data-active='true'] {
+    z-index: 2;
+  }
+
+  .rocket-hotspot-dot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    width: var(--hotspot-size);
+    height: var(--hotspot-size);
+    translate: -50% -50%;
+    place-items: center;
+    border: 0.0938rem solid
+      color-mix(in srgb, var(--color-accent) 65%, transparent);
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--color-void) 62%, transparent);
+    color: var(--color-accent);
+    cursor: pointer;
+    pointer-events: auto;
+    backdrop-filter: blur(0.12rem);
+    box-shadow:
+      inset 0 0 0.5rem color-mix(in srgb, var(--color-accent) 18%, transparent),
+      0 0 0.9rem color-mix(in srgb, var(--color-accent) 22%, transparent);
+    transition:
+      scale 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  /* Sonar ring: the only thing that says these are pressable before the
+     pointer arrives. */
+  .rocket-hotspot-dot::after {
+    content: '';
+    position: absolute;
+    inset: -0.15rem;
+    border: 0.0625rem solid
+      color-mix(in srgb, var(--color-accent) 55%, transparent);
+    border-radius: 50%;
+    animation: hotspot-ping 2.6s ease-out infinite;
+  }
+
+  @keyframes hotspot-ping {
+    0% {
+      opacity: 0.55;
+      scale: 1;
+    }
+    70%,
+    100% {
+      opacity: 0;
+      scale: 1.55;
+    }
+  }
+
+  .rocket-hotspot-dot:hover {
+    scale: 1.12;
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 22%, var(--color-void));
+    box-shadow:
+      inset 0 0 0.6rem color-mix(in srgb, var(--color-accent) 26%, transparent),
+      0 0 1.4rem color-mix(in srgb, var(--color-accent) 38%, transparent);
+  }
+
+  .rocket-hotspot-dot:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.2rem;
+  }
+
+  /* Open marker: the plus turns into the cross that closes it. */
+  .rocket-hotspot-dot[data-active='true'] {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 26%, var(--color-void));
+  }
+
+  .rocket-hotspot-dot[data-active='true']::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .rocket-hotspot-plus {
+    width: 58%;
+    height: 58%;
+    stroke-width: 2.4;
+    transition: rotate 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .rocket-hotspot-dot[data-active='true'] .rocket-hotspot-plus {
+    rotate: 45deg;
+  }
+
+  .rocket-hotspot-card {
+    position: absolute;
+    z-index: 1;
+    display: grid;
+    width: min(15.5rem, 44vw);
+    gap: 0.5rem;
+    border: 0.0625rem solid
+      color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+    border-radius: 0.7rem;
+    background: color-mix(in oklab, var(--color-void) 88%, var(--color-glass));
+    padding: 0.75rem 0.85rem 0.85rem;
+    translate: var(--card-shift-x, 0px) var(--card-shift-y, 0px);
+    opacity: 0;
+    visibility: hidden;
+    scale: 0.86;
+    pointer-events: none;
+    backdrop-filter: blur(0.4rem);
+    box-shadow:
+      inset 0 0.0625rem 0
+        color-mix(in srgb, var(--color-flag-white) 6%, transparent),
+      0 0.9rem 2rem color-mix(in oklab, var(--color-void) 62%, transparent);
+    transition-property: opacity, visibility, scale;
+    transition-duration: 220ms, 0s, 220ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: 0ms, 220ms, 0ms;
+  }
+
+  .rocket-hotspot-card[data-open='true'] {
+    opacity: 1;
+    visibility: visible;
+    scale: 1;
+    pointer-events: auto;
+    transition-delay: 0ms;
+  }
+
+  /* The card opens into whichever half of the stage the marker left free.
+     The pin is a zero-size box on the marker centre, so each edge offset is
+     measured straight off the dot. */
+  .rocket-hotspot[data-side^='right'] .rocket-hotspot-card {
+    left: calc(var(--hotspot-size) * 0.62);
+  }
+
+  .rocket-hotspot[data-side^='left'] .rocket-hotspot-card {
+    right: calc(var(--hotspot-size) * 0.62);
+  }
+
+  .rocket-hotspot[data-side$='down'] .rocket-hotspot-card {
+    top: calc(var(--hotspot-size) * -0.5);
+  }
+
+  .rocket-hotspot[data-side$='up'] .rocket-hotspot-card {
+    bottom: calc(var(--hotspot-size) * -0.5);
+  }
+
+  .rocket-hotspot[data-side='right-down'] .rocket-hotspot-card {
+    transform-origin: top left;
+  }
+
+  .rocket-hotspot[data-side='right-up'] .rocket-hotspot-card {
+    transform-origin: bottom left;
+  }
+
+  .rocket-hotspot[data-side='left-down'] .rocket-hotspot-card {
+    transform-origin: top right;
+  }
+
+  .rocket-hotspot[data-side='left-up'] .rocket-hotspot-card {
+    transform-origin: bottom right;
+  }
+
+  .rocket-hotspot-card-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-bottom: 0.0625rem solid
+      color-mix(in srgb, var(--color-flag-red) 34%, transparent);
+    padding-bottom: 0.45rem;
+  }
+
+  .rocket-hotspot-card-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(0.62rem, 1.55svh, 0.76rem);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(
+      in srgb,
+      var(--color-flag-red) 74%,
+      var(--color-flag-white)
+    );
+  }
+
+  .rocket-hotspot-card-close {
+    display: grid;
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: none;
+    place-items: center;
+    border-radius: 0.3rem;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .rocket-hotspot-card-close:hover {
+    background: color-mix(in srgb, var(--color-flag-white) 8%, transparent);
+    color: var(--color-foreground);
+  }
+
+  .rocket-hotspot-card-close:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.15rem;
+  }
+
+  .rocket-hotspot-x {
+    width: 0.7rem;
+    height: 0.7rem;
+  }
+
+  .rocket-hotspot-card-body {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(0.56rem, 1.4svh, 0.68rem);
+    line-height: 1.6;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rocket-hotspot-dot::after {
+      animation: none;
+    }
+
+    .rocket-hotspots,
+    .rocket-hotspot-dot,
+    .rocket-hotspot-plus,
+    .rocket-hotspot-card {
+      transition-duration: 0s;
+    }
+  }
+
+  @media (max-width: 47.9375rem) {
+    .rocket-hotspot-card {
+      width: min(
+        15.5rem,
+        calc(
+          100vw - 1.25rem - env(safe-area-inset-left) -
+            env(safe-area-inset-right)
+        )
+      );
+      max-height: min(
+        42svh,
+        calc(
+          100dvh - 2.5rem - env(safe-area-inset-top) -
+            env(safe-area-inset-bottom)
+        )
+      );
+    }
+
+    .rocket-hotspot-card-body {
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
   }
 
   .rocket-exhibit-work {
@@ -1213,12 +1647,13 @@
 
     position: absolute;
     right: 0;
-    bottom: calc(8.5svh + env(safe-area-inset-bottom));
+    /* Stacked cut row uses the old 8.5svh clearance so COMMODORE stays put. */
+    bottom: calc(3.6svh + env(safe-area-inset-bottom));
     left: 0;
     z-index: 4;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
+    align-items: start;
     column-gap: 1.2svw;
     pointer-events: none;
   }
@@ -1242,9 +1677,10 @@
   .rocket-exhibit-caption {
     --exhibit-name-size: clamp(1.25rem, 4.2svh, 2.75rem);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.9svw;
+    gap: 1.32svh;
     pointer-events: none;
   }
 
@@ -1263,13 +1699,10 @@
     color: var(--color-flag-white);
   }
 
-  /* Title font, not the button font. 1em/1cap must be Plateia's. */
   .rocket-exhibit-cut-slot {
     display: flex;
     align-items: center;
-    font-family: var(--font-display);
-    font-size: var(--exhibit-name-size);
-    padding-top: calc((1em - 1cap) / 2);
+    justify-content: center;
   }
 
   .rocket-exhibit-hud-btn {
@@ -1323,7 +1756,9 @@
     stroke-width: 1.75;
   }
 
-  @media (max-width: 48rem) {
+  /* Tablets: both rail labels plus the name overrun one row below ~900px,
+     so the rails go icon-only (aria-label keeps the name). */
+  @media (max-width: 56.25rem) {
     .rocket-exhibit-rail .rocket-exhibit-hud-label {
       position: absolute;
       width: 1px;
@@ -1339,18 +1774,24 @@
     .rocket-exhibit-rail .rocket-exhibit-hud-btn {
       padding-inline: 1.4svw;
     }
-
-    .rocket-exhibit-caption {
-      gap: 0.55svw;
-    }
   }
 
-  /* Phones: name + cut on the first row, the two rails under it at the
-     edges. One row at 390px put "COMMODORE" and both rails at ~430px. */
+  /* Phones: caption (name + cut) on the first row, the two rails under it
+     at the edges. One row at 390px put "COMMODORE" and both rails at
+     ~430px. The whole block sits inside the 10rem band the stage leaves
+     at the bottom, so the title row above it is sized to the 5rem band
+     on top. */
   @media (max-width: 47.9375rem) {
+    .rocket-exhibit-work {
+      top: calc(7svh + env(safe-area-inset-top));
+      padding-inline: 4vw;
+      font-size: clamp(1.25rem, 7vw, 2rem);
+    }
+
     .rocket-exhibit-hud {
       --exhibit-name-size: clamp(1.1rem, 6.4vw, 1.75rem);
 
+      bottom: calc(5svh + env(safe-area-inset-bottom));
       grid-template-columns: 1fr 1fr;
       row-gap: 1.6svh;
     }
@@ -1358,13 +1799,6 @@
     .rocket-exhibit-caption {
       grid-column: 1 / -1;
       --exhibit-name-size: clamp(1.1rem, 6.4vw, 1.75rem);
-
-      flex-direction: column;
-      gap: 1.2svh;
-    }
-
-    .rocket-exhibit-cut-slot {
-      padding-top: 0;
     }
 
     .rocket-exhibit-rail--left {
@@ -1536,6 +1970,7 @@
   }
 
   .partners-marquee {
+    /* Slot height matches the loop's logoHeight prop (76px / 52px). */
     --partner-slot-w: 10.5rem;
     --partner-slot-h: 4.75rem;
 
@@ -1646,6 +2081,17 @@
 
   .partners-marquee .group\/item:hover .partners-marquee-slot {
     transform: scale(1.12);
+  }
+
+  @media (max-width: 47.9375rem) {
+    .partners-marquee {
+      --partner-slot-w: 7rem;
+      --partner-slot-h: 3.25rem;
+    }
+
+    .partners-marquee-portal {
+      width: clamp(2.5rem, 12vw, 4.5rem);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1772,6 +2218,27 @@
   /* Phones: the cards are the same corners, but shorter and smaller so the
      diagonal airframe passes between them instead of under them. */
   @media (max-width: 47.9375rem) {
+    /* The headline runs three lines at 66svw on a 320px screen. Nearly the
+       full width keeps it to two and off the flyby nose. */
+    .landing-copy {
+      gap: 2.2svh;
+      padding-top: calc(21svh + env(safe-area-inset-top));
+      padding-inline: 5vw;
+    }
+
+    .landing-title {
+      max-width: 90vw;
+    }
+
+    .landing-subtitle {
+      max-width: 100%;
+    }
+
+    .see-more {
+      left: calc(5vw + env(safe-area-inset-left));
+      bottom: calc(7svh + env(safe-area-inset-bottom));
+    }
+
     .hold-block {
       gap: 1svh;
       max-width: 58vw;
@@ -1904,7 +2371,8 @@
     justify-content: center;
     min-height: 100svh;
     padding: calc(10svh + env(safe-area-inset-top))
-      calc(4vw + env(safe-area-inset-right)) calc(8svh + env(safe-area-inset-bottom))
+      calc(4vw + env(safe-area-inset-right))
+      calc(16svh + env(safe-area-inset-bottom))
       calc(4vw + env(safe-area-inset-left));
     scroll-margin-top: 4svh;
     background: var(--color-void);
@@ -2498,6 +2966,61 @@
     .contact-aside {
       gap: 3svh;
     }
+
+    /* Stacked: the 100svh field is centred on the slot, so the strap
+       paints through SEND. Keep the canvas in the stage. */
+    .contact-badge-field {
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      translate: none;
+    }
+  }
+
+  /* Phones: one column already. Shorter badge stage so the form is not
+     followed by a screen of lanyard, and 16px inputs so iOS does not zoom
+     the page on focus. */
+  @media (max-width: 47.9375rem) {
+    .contact {
+      padding-block: calc(8svh + env(safe-area-inset-top))
+        calc(3svh + env(safe-area-inset-bottom));
+    }
+
+    .contact::before {
+      min-width: 18rem;
+      min-height: 18rem;
+      filter: blur(5rem);
+    }
+
+    .contact-inner {
+      gap: 3.4svh;
+      width: 100%;
+    }
+
+    .contact-intro {
+      margin-bottom: 2.6svh;
+    }
+
+    .contact-tabs {
+      gap: 1rem;
+    }
+
+    .contact-input {
+      font-size: 1rem;
+    }
+
+    .contact-badge-stage {
+      height: clamp(17rem, 46svh, 24rem);
+    }
+
+    .contact-socials {
+      padding: 1.4rem 1rem 1.3rem;
+    }
+
+    .contact-socials-list {
+      gap: 0.5rem;
+    }
   }
 
   .gallery {
@@ -2508,7 +3031,8 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 150svh;
+    height: 165svh;
+    padding-top: 8svh;
     overflow: clip;
     scroll-margin-top: 4svh;
     background: var(--color-void);
@@ -2560,24 +3084,8 @@
 
   .gallery-logo {
     position: relative;
-    /* The mark scales with this, and it has to: the rocket's tip reaches to
-       within 6% of the ring, so the ring cannot be tightened on its own. */
     width: 10.5rem;
     height: 10.5rem;
-  }
-
-  /* The ring is a layer behind the mark rather than a frame around it. As a
-     border on the interactive box it clipped the dots the pointer pushed
-     outward, and its padding left the outer ring of the circle deaf to the
-     pointer -- the hover died exactly where the mark still had dots. */
-  .gallery-logo::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 0.125rem solid var(--color-flag-white);
-    border-radius: 100%;
-    background: var(--color-void);
-    pointer-events: none;
   }
 
   .gallery-logo-canvas {
@@ -2624,12 +3132,13 @@
 
   .gallery-body {
     position: relative;
-    width: min(92vw, 28rem);
-    /* Sits straight under the mark now that nothing comes between them. */
-    margin: 1.15em 0 1.6em;
+    width: min(92vw, 36rem);
+    /* Negative top eats empty canvas below the mark (box is sized for the
+       old ring). Extra bottom clears the button. */
+    margin: -0.35rem 0 2.85em;
     font-family: var(--font-display);
-    font-size: clamp(0.68rem, 1.8svh, 0.92rem);
-    line-height: 1.45;
+    font-size: clamp(0.88rem, 2.35svh, 1.12rem);
+    line-height: 1.4;
     letter-spacing: 0.05em;
     text-align: center;
     color: var(--color-foreground);
@@ -2685,6 +3194,47 @@
     }
   }
 
+  /* Phones: two 50% cards plus a 2em gap overflow a 320px row, and three
+     15rem rows overrun a 568px screen. Cards shrink until the three rows
+     clear the shorter phone section with the mark and copy between them.
+     Flex-start + a short section kills the empty void after contact. */
+  @media (max-width: 47.9375rem) {
+    .gallery {
+      justify-content: flex-start;
+      height: 118svh;
+      padding-top: 3svh;
+    }
+
+    .gallery-content {
+      top: 40%;
+    }
+
+    .gallery-row {
+      gap: 0.75em;
+      margin: 0.6em 0;
+    }
+
+    .gallery-card {
+      width: 44%;
+      height: clamp(7rem, 22svh, 11rem);
+    }
+
+    .gallery-logo {
+      width: clamp(6.5rem, 28vw, 8.5rem);
+      height: clamp(6.5rem, 28vw, 8.5rem);
+    }
+
+    .gallery-body {
+      width: 90vw;
+      margin-bottom: 2em;
+    }
+
+    .gallery-cta {
+      padding: 0.9em 1.6em;
+      font-size: 0.75rem;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .gallery {
       height: auto;
@@ -2702,7 +3252,6 @@
     .gallery-card {
       will-change: auto;
     }
-
   }
 
   .gallery-overlay {
@@ -2785,6 +3334,7 @@
     gap: 0.75rem;
     padding: 0 4vw 6svh;
     overflow: auto;
+    overscroll-behavior: contain;
   }
 
   .gallery-overlay-item {
@@ -3068,6 +3618,20 @@
     pointer-events: auto;
   }
 
+  /* Cue that the stage keeps going past the fold. */
+  .mission-overlay::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 3rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      color-mix(in oklab, var(--color-void) 85%, transparent),
+      transparent
+    );
+  }
+
   .mission-overlay-bar {
     display: flex;
     align-items: center;
@@ -3113,6 +3677,10 @@
     min-height: 0;
     padding: 0 4vw 6svh;
     overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-accent) 50%, transparent)
+      transparent;
   }
 
   .mission-card-wrap {
@@ -3139,21 +3707,31 @@
       color-mix(in oklab, var(--color-void) 55%, transparent);
   }
 
+  /* Padding, not width: the card items carry Tailwind's `w-fit`, and the
+     utilities layer outranks this one. Same reason the rule below is a
+     min-width. */
   .mission-card-icon-wrap {
     display: grid;
-    width: 2.4rem;
-    height: 2.4rem;
+    aspect-ratio: 1;
     place-items: center;
+    padding: 0.6rem;
     border: 0.0625rem solid
       color-mix(in oklab, var(--color-accent) 45%, transparent);
-    border-radius: 0.55rem;
-    background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+    border-radius: 0.85rem;
+    background: linear-gradient(
+      155deg,
+      color-mix(in oklab, var(--color-accent) 22%, transparent),
+      color-mix(in oklab, var(--color-accent) 6%, transparent)
+    );
+    box-shadow: 0 0.35rem 0.9rem
+      color-mix(in oklab, var(--color-accent) 16%, transparent);
     color: var(--color-accent);
   }
 
   .mission-card-icon {
-    width: 1.15rem;
-    height: 1.15rem;
+    width: 1.3rem;
+    height: 1.3rem;
+    stroke-width: 1.75;
   }
 
   .mission-card-title {
@@ -3167,9 +3745,14 @@
   }
 
   .mission-card-rule {
-    width: 3.2rem;
+    min-width: 3.2rem;
     height: 0.12rem;
-    background: var(--color-accent);
+    border-radius: 0.0625rem;
+    background: linear-gradient(
+      to right,
+      var(--color-accent),
+      color-mix(in oklab, var(--color-accent) 15%, transparent)
+    );
   }
 
   .mission-card-body {
@@ -3237,6 +3820,78 @@
     object-fit: cover;
   }
 
+  .ground-card-photo-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+  }
+
+  .ground-card-photo-open:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.2rem;
+  }
+
+  .ground-photo-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: grid;
+    place-items: center;
+    padding: calc(3.6rem + env(safe-area-inset-top))
+      calc(0.75rem + env(safe-area-inset-right))
+      calc(0.75rem + env(safe-area-inset-bottom))
+      calc(0.75rem + env(safe-area-inset-left));
+  }
+
+  .ground-photo-lightbox-scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: color-mix(in oklab, var(--color-void) 88%, transparent);
+    cursor: zoom-out;
+  }
+
+  .ground-photo-lightbox img {
+    position: relative;
+    z-index: 1;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    pointer-events: none;
+  }
+
+  .ground-photo-lightbox-close {
+    position: absolute;
+    top: calc(0.75rem + env(safe-area-inset-top));
+    right: calc(0.75rem + env(safe-area-inset-right));
+    z-index: 1;
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    place-items: center;
+    border: 0;
+    border-radius: 0.55rem;
+    background: color-mix(in oklab, var(--color-void) 70%, var(--color-glass));
+    color: var(--color-foreground);
+    cursor: pointer;
+  }
+
+  .ground-photo-lightbox-close:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.25rem;
+  }
+
+  .ground-photo-lightbox-x {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
   @media (max-width: 48rem) {
     .ground-card {
       grid-template-columns: 1fr;
@@ -3245,6 +3900,28 @@
     .ground-card-media {
       grid-template-columns: 1fr 1fr;
       display: grid;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .mission-overlay-bar {
+      padding: 1.8svh 4vw 1rem;
+    }
+
+    .mission-overlay-stage {
+      gap: 1rem;
+      padding: 0 4vw 4svh;
+    }
+
+    .mission-card,
+    .ground-card {
+      gap: 0.85rem;
+      border-radius: 0.9rem;
+      padding: 1.25rem 1.15rem 1.4rem;
+    }
+
+    .mission-card {
+      min-height: 0;
     }
   }
 

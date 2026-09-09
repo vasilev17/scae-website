@@ -6,11 +6,7 @@ import gdbLogo from '@/assets/images/partners/GDB.png';
 import matorLogo from '@/assets/images/partners/MATOR.png';
 import mpLogo from '@/assets/images/partners/MP.png';
 import aboutClubPhoto from '@/assets/images/about/about-the-club.webp';
-import galleryEarth from '@/assets/images/gallery/earth.jpg';
 import galleryExhibit from '@/assets/images/gallery/exhibit.jpg';
-import galleryLaunch from '@/assets/images/gallery/launch.jpg';
-import galleryOrbit from '@/assets/images/gallery/orbit.jpg';
-import galleryVehicle from '@/assets/images/gallery/vehicle.jpg';
 import galleryWorkshop from '@/assets/images/gallery/workshop.jpg';
 import tuLogo from '@/assets/images/partners/TU.png';
 import gateMetal from '@/assets/generated/gate-metal.webp';
@@ -23,12 +19,14 @@ import { GallerySection } from '@/components/sections/GallerySection';
 import type { SocialLink } from '@/components/ui/ContactSocials';
 import { LandingHero } from '@/components/ui/LandingHero';
 import { getDictionary, localeStaticPaths, resolveLocale } from '@/i18n';
+import { loadGalleryImages } from '@/lib/gallery';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 
 export const getStaticPaths = localeStaticPaths;
 
 const locale = resolveLocale(Astro.params.locale);
 const t = getDictionary(locale);
+const galleryImages = await loadGalleryImages(locale);
 
 const menuItems = [
   { id: 'home', label: t.menu.items.home, href: '#home' },
@@ -94,6 +92,7 @@ const socialLinks: SocialLink[] = [
       },
     ]}
     exhibitFxLabel={t.home.exhibitFx}
+    exhibitHotspots={t.home.sectionPoints}
     aboutTitle={t.home.aboutClub}
     aboutBody={t.home.aboutClubBody}
     aboutPhotoSrc={aboutClubPhoto.src}
@@ -166,43 +165,6 @@ const socialLinks: SocialLink[] = [
     client:load
     copy={t.gallery}
     logoSrc={scaeMark}
-    images={[
-      {
-        src: galleryWorkshop.src,
-        alt: t.gallery.alts.workshop,
-        width: galleryWorkshop.width,
-        height: galleryWorkshop.height,
-      },
-      {
-        src: galleryExhibit.src,
-        alt: t.gallery.alts.exhibit,
-        width: galleryExhibit.width,
-        height: galleryExhibit.height,
-      },
-      {
-        src: galleryLaunch.src,
-        alt: t.gallery.alts.launch,
-        width: galleryLaunch.width,
-        height: galleryLaunch.height,
-      },
-      {
-        src: galleryVehicle.src,
-        alt: t.gallery.alts.vehicle,
-        width: galleryVehicle.width,
-        height: galleryVehicle.height,
-      },
-      {
-        src: galleryOrbit.src,
-        alt: t.gallery.alts.orbit,
-        width: galleryOrbit.width,
-        height: galleryOrbit.height,
-      },
-      {
-        src: galleryEarth.src,
-        alt: t.gallery.alts.earth,
-        width: galleryEarth.width,
-        height: galleryEarth.height,
-      },
-    ]}
+    images={galleryImages}
   />
 </BaseLayout>
