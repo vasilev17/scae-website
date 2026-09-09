@@ -13,14 +13,14 @@ type GateNavProps = {
   menuLabel: string;
   menuOpen: boolean;
   onMenuToggle: () => void;
+  onContact: () => void;
   // Lets the opener take focus back once the menu has closed.
   menuButtonRef?: Ref<HTMLButtonElement>;
 };
 
 /**
  * Navigation bar carried by the top gate pane. The menu control shuts the gate
- * and opens the navigation dial behind it. The contact control is still
- * presentational.
+ * and opens the navigation dial behind it. Contact jumps the page to the form.
  */
 export function GateNav({
   logoSrc,
@@ -32,11 +32,12 @@ export function GateNav({
   menuLabel,
   menuOpen,
   onMenuToggle,
+  onContact,
   menuButtonRef,
 }: GateNavProps) {
   return (
     <nav className="gate-nav" aria-label={label}>
-      <SpecularButton className="gate-nav-button">
+      <SpecularButton className="gate-nav-button" onClick={onContact}>
         {contactLabel}
         <img src={contactIconSrc} alt="" className="gate-nav-button-dot" />
       </SpecularButton>

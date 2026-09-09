@@ -30,13 +30,11 @@ export const getStaticPaths = localeStaticPaths;
 const locale = resolveLocale(Astro.params.locale);
 const t = getDictionary(locale);
 
-// Anchors are placeholders until the sections they name exist.
 const menuItems = [
+  { id: 'home', label: t.menu.items.home, href: '#home' },
+  { id: 'our-work', label: t.menu.items.ourWork, href: '#our-work' },
   { id: 'about', label: t.menu.items.about, href: '#about' },
-  { id: 'projects', label: t.menu.items.projects, href: '#projects' },
-  { id: 'team', label: t.menu.items.team, href: '#team' },
-  { id: 'events', label: t.menu.items.events, href: '#events' },
-  { id: 'join', label: t.menu.items.join, href: '#join' },
+  { id: 'gallery', label: t.menu.items.gallery, href: '#gallery' },
   { id: 'contact', label: t.menu.items.contact, href: '#contact' },
 ];
 
@@ -78,7 +76,23 @@ const socialLinks: SocialLink[] = [
     exhibitWork={t.home.ourWork}
     exhibitSection={t.home.sectionView}
     exhibitMission={t.home.missionConcept}
+    exhibitMissionCopy={t.home.missionModal}
     exhibitGround={t.home.groundSegment}
+    exhibitGroundCopy={t.home.groundModal}
+    exhibitGroundPhotos={[
+      {
+        src: galleryWorkshop.src,
+        alt: t.home.groundModal.standAlt,
+        width: galleryWorkshop.width,
+        height: galleryWorkshop.height,
+      },
+      {
+        src: galleryExhibit.src,
+        alt: t.home.groundModal.padAlt,
+        width: galleryExhibit.width,
+        height: galleryExhibit.height,
+      },
+    ]}
     exhibitFxLabel={t.home.exhibitFx}
     aboutTitle={t.home.aboutClub}
     aboutBody={t.home.aboutClubBody}
@@ -142,14 +156,14 @@ const socialLinks: SocialLink[] = [
   />
   <div id="after-hero" class="void-ascent" aria-hidden="true"></div>
   <ContactSection
-    client:visible
+    client:load
     copy={t.contact}
     locale={locale}
     logoSrc={scaeLogo.src}
     socialLinks={socialLinks}
   />
   <GallerySection
-    client:visible={{ rootMargin: '1200px 0px' }}
+    client:load
     copy={t.gallery}
     logoSrc={scaeMark}
     images={[

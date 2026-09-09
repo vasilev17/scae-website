@@ -17,6 +17,7 @@ type CircularMenuProps = {
   label: string;
   closeLabel: string;
   onClose: () => void;
+  onNavigate: (item: CircularMenuItem) => void;
   // Icon at rest in the middle of the joystick.
   centerIconSrc: string;
 };
@@ -131,13 +132,20 @@ export function CircularMenu({
   label,
   closeLabel,
   onClose,
+  onNavigate,
   centerIconSrc,
 }: CircularMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const revealedRef = useRef(false);
+  const itemsRef = useRef(items);
+  const onNavigateRef = useRef(onNavigate);
+  const pushedAtRef = useRef<number | null>(null);
   const [pushedAt, setPushedAt] = useState<number | null>(null);
+
+  itemsRef.current = items;
+  onNavigateRef.current = onNavigate;
 
   useGSAP(
     () => {
@@ -217,11 +225,12 @@ export function CircularMenu({
       gsap.set(joystick, { x: current.x, y: current.y });
 
       const distance = Math.hypot(current.x, current.y);
-      setPushedAt(
+      const next =
         dragging && distance > range * DRAG_THRESHOLD
           ? segmentAt(current.x, current.y, items.length)
-          : null,
-      );
+          : null;
+      pushedAtRef.current = next;
+      setPushedAt(next);
 
       if (!dragging && distance < 0.1) {
         gsap.set(joystick, { x: 0, y: 0 });
@@ -267,25 +276,33 @@ export function CircularMenu({
       }
     };
 
-    const onPointerUp = () => {
+    const release = (commit: boolean) => {
+      const selected = pushedAtRef.current;
       dragging = false;
       target.x = 0;
       target.y = 0;
       wake();
+      if (!commit || selected === null) return;
+      const item = itemsRef.current[selected];
+      if (item) onNavigateRef.current(item);
     };
+
+    const onPointerUp = () => release(true);
+    const onPointerCancel = () => release(false);
 
     joystick.addEventListener('pointerdown', onPointerDown);
     joystick.addEventListener('pointermove', onPointerMove);
     joystick.addEventListener('pointerup', onPointerUp);
-    joystick.addEventListener('pointercancel', onPointerUp);
+    joystick.addEventListener('pointercancel', onPointerCancel);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
       joystick.removeEventListener('pointerdown', onPointerDown);
       joystick.removeEventListener('pointermove', onPointerMove);
       joystick.removeEventListener('pointerup', onPointerUp);
-      joystick.removeEventListener('pointercancel', onPointerUp);
+      joystick.removeEventListener('pointercancel', onPointerCancel);
       gsap.set(joystick, { x: 0, y: 0 });
+      pushedAtRef.current = null;
       setPushedAt(null);
     };
   }, [open, items.length]);
@@ -328,6 +345,10 @@ export function CircularMenu({
                   className="gate-menu-segment"
                   href={item.href}
                   data-pushed={pushedAt === index}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onNavigate(item);
+                  }}
                 >
                   <path className="gate-menu-shape" d={segment.d} />
                   <text

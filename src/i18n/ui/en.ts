@@ -15,12 +15,11 @@ export const en = {
     label: 'Site navigation',
     close: 'Close menu',
     items: {
-      about: 'About Us',
-      projects: 'Projects',
-      team: 'Team',
-      events: 'Events',
-      join: 'Join Us',
-      contact: 'Contact',
+      home: 'Home',
+      contact: 'Contacts',
+      ourWork: 'Our Work',
+      gallery: 'Gallery',
+      about: 'About',
     },
   },
   home: {
@@ -40,7 +39,24 @@ export const en = {
     ourWork: 'Our Work',
     sectionView: 'Section view',
     missionConcept: 'Mission & Concept',
+    missionModal: {
+      close: 'Close mission and concept',
+      missionTitle: 'Mission',
+      missionBody:
+        'Commodore must achieve an altitude of 100 meters and autonomously deploy a parachute on apogee, while recording all flight parameters such as position, speed, acceleration, and both software and hardware failures during the entire mission duration.',
+      conceptTitle: 'Concept',
+      conceptBody:
+        'The purpose of building Commodore is to grasp the basics of flight dynamics. We aim to simulate the flight trajectory and precisely measure every event onboard for both model verification and forensics capabilities. All systems and processes developed for Commodore are going to be used as a foundation for future developments.',
+    },
     groundSegment: 'Ground Segment',
+    groundModal: {
+      close: 'Close ground segment',
+      body: 'A test stand for solid fuel rocket engines was developed to safely test and verify our engine models. It provides full protection against failures via constructive safety mechanisms and wireless operation capabilities. It can measure up to 200 N of thrust, and temperatures up to 1000°C on the external wall of an engine. The stand is designed with the capability to be extended with more sensors such as pressure and temperature ones.',
+      launchBody:
+        'A launching stand will reuse this architecture so pad operations stay remote, instrumented, and fail-safe as the vehicle moves from static fire to flight.',
+      standAlt: 'Engine test stand in the SCAE workshop',
+      padAlt: 'Commodore hardware on the exhibit stand',
+    },
     exhibitFx: 'Interactive interior view of the Commodore rocket',
     partners: 'Partners',
     partnersAria: 'Industry and academic partners',

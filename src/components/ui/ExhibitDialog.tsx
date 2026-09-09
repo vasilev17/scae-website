@@ -1,44 +1,36 @@
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { X } from 'lucide-react';
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { SpecularButton } from '@/components/ui/SpecularButton';
 import { getSmoothScroll } from '@/lib/smooth-scroll';
 
-const DomeGallery = lazy(async () => {
-  const mod = await import('@/components/ui/DomeGallery');
-  return { default: mod.DomeGallery };
-});
-
-type GalleryImage = {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-};
-
-type GalleryOverlayProps = {
+type ExhibitDialogProps = {
   open: boolean;
   origin: { x: number; y: number };
   title: string;
   closeLabel: string;
-  images: GalleryImage[];
+  dialogId: string;
+  titleId: string;
   onClose: () => void;
+  children: ReactNode;
 };
 
 const FOCUSABLE =
   'a[href], input, select, textarea, button:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
 
-export function GalleryOverlay({
+export function ExhibitDialog({
   open,
   origin,
   title,
   closeLabel,
-  images,
+  dialogId,
+  titleId,
   onClose,
-}: GalleryOverlayProps) {
+  children,
+}: ExhibitDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -57,7 +49,6 @@ export function GalleryOverlay({
 
       if (reduce) {
         gsap.set(root, { autoAlpha: open ? 1 : 0, scale: 1 });
-        gsap.set('.gallery-overlay-item', { autoAlpha: 1, y: 0 });
         return;
       }
 
@@ -74,18 +65,6 @@ export function GalleryOverlay({
             onComplete: () => {
               gsap.set(root, { willChange: 'auto' });
             },
-          },
-        );
-        gsap.fromTo(
-          '.gallery-overlay-item',
-          { y: 24, autoAlpha: 0 },
-          {
-            y: 0,
-            autoAlpha: 1,
-            duration: 0.4,
-            stagger: 0.05,
-            delay: 0.18,
-            ease: 'power2.out',
           },
         );
         return;
@@ -126,7 +105,6 @@ export function GalleryOverlay({
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (root?.querySelector('[data-enlarging="true"]')) return;
         event.preventDefault();
         onClose();
         return;
@@ -158,63 +136,32 @@ export function GalleryOverlay({
 
   if (typeof document === 'undefined') return null;
 
-  const reduceMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
   return createPortal(
     <div
       ref={rootRef}
-      className="gallery-overlay"
+      className="mission-overlay"
       data-open={open}
-      data-mode={reduceMotion ? 'grid' : 'dome'}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="gallery-overlay-title"
+      aria-labelledby={titleId}
       aria-hidden={!open}
       inert={!open}
+      id={dialogId}
     >
-      <div className="gallery-overlay-bar">
-        <p className="gallery-overlay-title" id="gallery-overlay-title">
+      <div className="mission-overlay-bar">
+        <p className="mission-overlay-title" id={titleId}>
           {title}
         </p>
         <SpecularButton
           ref={closeRef}
-          className="gallery-overlay-close"
+          className="mission-overlay-close"
           aria-label={closeLabel}
           onClick={onClose}
         >
-          <X aria-hidden="true" className="gallery-overlay-x" />
+          <X aria-hidden="true" className="mission-overlay-x" />
         </SpecularButton>
       </div>
-      <div className="gallery-overlay-stage">
-        {reduceMotion ? (
-          <div className="gallery-overlay-grid">
-            {images.map((image) => (
-              <figure className="gallery-overlay-item" key={image.src}>
-                <img
-                  src={image.src}
-                  alt={image.alt}
-                  width={image.width}
-                  height={image.height}
-                />
-              </figure>
-            ))}
-          </div>
-        ) : (
-          <Suspense fallback={null}>
-            <DomeGallery
-              images={images}
-              fit={0.7}
-              minRadius={650}
-              maxVerticalRotationDeg={5}
-              segments={30}
-              dragDampening={2.4}
-              grayscale={false}
-            />
-          </Suspense>
-        )}
-      </div>
+      <div className="mission-overlay-stage">{children}</div>
     </div>,
     document.body,
   );
