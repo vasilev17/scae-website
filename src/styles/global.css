@@ -36,6 +36,8 @@
   --color-flag-white: #ffffff;
   --color-flag-green: #00966e;
   --color-flag-red: #d62612;
+  /* Disc fill on the SCAE mark. */
+  --color-logo: #0c1031;
 
   --color-cue-track: #404040;
   --color-cue-pulse-tail: #999999;
@@ -378,7 +380,7 @@
     font-family: var(--font-display);
     font-size: calc(var(--nav-band-height) * 0.169);
     line-height: 1.26;
-    color: var(--color-flag-white);
+    color: var(--color-logo);
   }
 
   .gate-nav-flag {
@@ -410,7 +412,7 @@
     .gate-nav {
       --nav-band-height: 12cqh;
       --nav-button-height: clamp(1.65rem, 3.9cqh, 4rem);
-      --nav-button-font: clamp(0.5625rem, 1.35cqh, 1.25rem);
+      --nav-button-font: 0.5rem;
       --nav-icon-height: clamp(0.55rem, 1.35cqh, 1.2rem);
 
       padding-inline: calc(0.5rem + env(safe-area-inset-left))
@@ -419,6 +421,7 @@
 
     .gate-nav-button {
       gap: max(0.8cqw, 0.3rem);
+      width: 6.6rem;
       padding-inline: max(1.2cqw, 0.5rem);
       border-radius: 0.35rem;
     }
@@ -943,12 +946,15 @@
 
   .void-partners-title {
     margin: 0 0 2.8svh;
+    max-width: 100%;
+    padding-inline: 0.75rem;
     font-family: var(--font-display);
-    font-size: clamp(1.265625rem, 4.6575svh, 3.0375rem);
+    /* vw cap so the word stays inside a 320px screen. svh still leads on desktop. */
+    font-size: clamp(1rem, min(4.6575svh, 7.2vw), 3.0375rem);
     line-height: 1.1;
     text-align: center;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
   }
 
   .void-about {
@@ -1345,8 +1351,16 @@
     position: absolute;
     z-index: 1;
     display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
     width: min(15.5rem, 44vw);
+    max-height: min(
+      62svh,
+      calc(
+        100dvh - 2.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+      )
+    );
     gap: 0.5rem;
+    overflow: hidden;
     border: 0.0625rem solid
       color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
     border-radius: 0.7rem;
@@ -1462,6 +1476,9 @@
 
   .rocket-hotspot-card-body {
     margin: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     font-family: var(--font-display);
     font-size: clamp(0.56rem, 1.4svh, 0.68rem);
     line-height: 1.6;
@@ -1502,9 +1519,7 @@
     }
 
     .rocket-hotspot-card-body {
-      min-height: 0;
-      overflow-y: auto;
-      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
   }
 
@@ -2613,18 +2628,24 @@
   }
 
   .contact-badge-stage {
+    --badge-stage-h: clamp(24rem, 62svh, 42rem);
+
     position: relative;
-    height: clamp(24rem, 62svh, 42rem);
+    height: var(--badge-stage-h);
     /* Grabbing the badge where it hangs must not scroll the page on touch. */
     touch-action: none;
   }
 
+  /* Centered on the badge, so it has to be twice the distance to the far
+     viewport edge (the right column sits near 75vw, and the stage can sit
+     anywhere in the viewport while scrolling). The camera backs off with the
+     height, so the badge keeps its size. */
   .contact-badge-field {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 100vw;
-    height: 100svh;
+    width: 160vw;
+    height: 200svh;
     translate: -50% -50%;
     pointer-events: none;
   }
@@ -2670,7 +2691,9 @@
 
   .contact-socials {
     position: relative;
-    padding: 1.6rem 1.5rem 1.5rem;
+    align-self: center;
+    width: min(100%, 32rem);
+    padding: 0.95rem 2.25rem 1rem;
     overflow: hidden;
     border: 0.0625rem solid
       color-mix(in srgb, var(--color-flag-white) 10%, transparent);
@@ -2685,23 +2708,25 @@
   }
 
   .contact-socials-title {
-    margin: 0 0 1.5rem;
+    margin: 0 0 0.85rem;
     font-family: var(--font-display);
     font-size: 0.78rem;
     letter-spacing: 0.16em;
+    text-align: center;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--color-flag-white) 82%, transparent);
   }
 
   .contact-socials-array {
     position: relative;
+    width: 100%;
   }
 
   .contact-socials-bus {
     position: absolute;
-    top: 1.375rem;
-    left: 14%;
-    right: 14%;
+    top: 1.75rem;
+    left: 22%;
+    right: 22%;
     height: 0.0625rem;
     overflow: hidden;
     background: color-mix(in srgb, var(--color-flag-white) 14%, transparent);
@@ -2733,9 +2758,9 @@
   }
 
   .contact-socials-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    justify-content: space-evenly;
+    gap: clamp(1.5rem, 6vw, 4rem);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -2745,15 +2770,15 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.9rem;
+    gap: 1.15rem;
     text-decoration: none;
   }
 
   .contact-socials-diamond {
     display: grid;
     place-items: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 3.5rem;
+    height: 3.5rem;
     rotate: 45deg;
     border: 0.0625rem solid
       color-mix(in srgb, var(--color-accent) 38%, transparent);
@@ -2765,8 +2790,8 @@
   }
 
   .contact-socials-icon {
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.4rem;
+    height: 1.4rem;
     rotate: -45deg;
     color: color-mix(in srgb, var(--color-flag-white) 80%, transparent);
     transition: color 240ms ease;
@@ -2774,7 +2799,7 @@
 
   .contact-socials-label {
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: 0.68rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--color-flag-white) 55%, transparent);
@@ -2804,12 +2829,12 @@
       gap: 3svh;
     }
 
+    /* Single column: the stage is centered, so the viewport width covers it.
+       The rope anchor sits above the stage, so clip the top at the stage
+       edge or the strap runs up into the form. */
     .contact-badge-field {
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      translate: none;
+      width: 100vw;
+      clip-path: inset(calc(50% - var(--badge-stage-h) / 2) 0 0 0);
     }
   }
 
@@ -2843,15 +2868,16 @@
     }
 
     .contact-badge-stage {
-      height: clamp(17rem, 46svh, 24rem);
+      --badge-stage-h: clamp(17rem, 46svh, 24rem);
     }
 
     .contact-socials {
-      padding: 1.4rem 1rem 1.3rem;
+      width: min(100%, 22rem);
+      padding: 0.85rem 1.25rem 0.9rem;
     }
 
     .contact-socials-list {
-      gap: 0.5rem;
+      gap: clamp(1rem, 8vw, 2.5rem);
     }
   }
 
@@ -3403,9 +3429,19 @@
   }
 
   @media (max-aspect-ratio: 1/1) {
-    .dome-gallery-frame {
-      width: 100%;
-      height: auto;
+    /* Phones get a thin gutter instead of the wide pad, which squeezed the frame. */
+    .dome-gallery-viewer {
+      padding: min(var(--viewer-pad), 0.625rem);
+    }
+
+    .dome-gallery-enlarge img,
+    .dome-gallery-enlarge-closing img {
+      object-fit: contain;
+    }
+
+    .dome-gallery-enlarge,
+    .dome-gallery-enlarge-closing {
+      box-shadow: none;
     }
   }
 
@@ -3666,12 +3702,9 @@
     position: fixed;
     inset: 0;
     z-index: 90;
-    display: grid;
-    place-items: center;
-    padding: calc(3.6rem + env(safe-area-inset-top))
-      calc(0.75rem + env(safe-area-inset-right))
-      calc(0.75rem + env(safe-area-inset-bottom))
-      calc(0.75rem + env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .ground-photo-lightbox-scrim {
@@ -3685,8 +3718,12 @@
   .ground-photo-lightbox img {
     position: relative;
     z-index: 1;
-    max-width: 100%;
-    max-height: 100%;
+    max-width: calc(
+      100vw - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right)
+    );
+    max-height: calc(
+      100dvh - 1.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
     width: auto;
     height: auto;
     object-fit: contain;

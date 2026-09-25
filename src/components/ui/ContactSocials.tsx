@@ -1,7 +1,6 @@
-import { Mail } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 
-export const SOCIAL_ICONS = ['linkedin', 'instagram', 'email'] as const;
+export const SOCIAL_ICONS = ['linkedin', 'instagram'] as const;
 
 export type SocialIcon = (typeof SOCIAL_ICONS)[number];
 
@@ -40,7 +39,6 @@ function InstagramGlyph(props: GlyphProps) {
 const ICONS: Record<SocialIcon, ComponentType<GlyphProps>> = {
   linkedin: LinkedInGlyph,
   instagram: InstagramGlyph,
-  email: Mail,
 };
 
 export function ContactSocials({ title, label, links }: ContactSocialsProps) {

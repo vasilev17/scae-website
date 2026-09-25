@@ -27,7 +27,7 @@ export const en = {
     heading: 'Ready for Dev',
     headline:
       'A Bulgarian student-led initiative that brings applied engineering into our education',
-    subtitle: "by launching the nation's first modern high-powered rockets.",
+    subtitle: "by developing, constructing, and launching rockets and their software",
     seeMore: 'See more',
     holdChallengeTitle: 'Our technical challenge:',
     holdChallengeBody: 'Reach the Kármán line and execute propulsive landing',
@@ -167,13 +167,12 @@ export const en = {
       label: 'SCAE on other platforms',
       linkedin: 'LinkedIn',
       instagram: 'Instagram',
-      email: 'E-mail',
     },
   },
   gallery: {
     title: 'Gallery',
     headline: 'More from US',
-    body: 'You can view moments from our research, development, testing and launch days.',
+    body: 'You can view moments from our research, development, testing and launch days',
     cta: 'See gallery',
     close: 'Close gallery',
     logoAlt: 'SCAE emblem',

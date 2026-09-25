@@ -55,6 +55,9 @@ type RocketExhibitProps = {
   hotspotCopy: RocketHotspotCopy;
   fx: boolean;
   rocketRunning: boolean;
+  // Mounted ahead of the scene and kept paused after it, so the canvas and
+  // GLB are ready on arrival and on scroll-back.
+  rocketMounted: boolean;
   starsRunning: boolean;
   partnersTitle: string;
   partnersAria: string;
@@ -117,6 +120,7 @@ export function RocketExhibit({
   hotspotCopy,
   fx,
   rocketRunning,
+  rocketMounted,
   starsRunning,
   partnersTitle,
   partnersAria,
@@ -227,7 +231,7 @@ export function RocketExhibit({
         </div>
       </div>
       <div className="rocket-exhibit-stage" aria-hidden="true">
-        {budget.dissolve || rocketRunning ? (
+        {budget.dissolve || rocketMounted || rocketRunning ? (
           <HeroRocket
             poseRef={poseRef}
             view="exhibit"

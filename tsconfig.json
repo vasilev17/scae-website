@@ -6,9 +6,8 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "noUncheckedIndexedAccess": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   }
 }

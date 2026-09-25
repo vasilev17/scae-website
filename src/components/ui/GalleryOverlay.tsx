@@ -206,6 +206,8 @@ export function GalleryOverlay({
             <DomeGallery
               images={images}
               fit={0.7}
+              openedImageWidth="min(25rem, calc(100vw - 1.25rem))"
+              openedImageHeight="min(25rem, calc(100dvh - 5rem))"
               minRadius={650}
               maxVerticalRotationDeg={5}
               segments={30}

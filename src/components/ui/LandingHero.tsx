@@ -267,7 +267,7 @@ function snapScrubbedTrigger(st: ScrollTrigger) {
       anim.totalProgress(st.progress);
       return;
     }
-    anim.progress(ScrollTrigger.scroll() >= st.start ? 1 : 0);
+    anim.progress(st.isActive || st.progress > 0 ? 1 : 0);
   } catch {
     // A stale trigger must not block the door reopen.
   }
@@ -1260,6 +1260,7 @@ export function LandingHero({
             hotspotCopy={exhibitHotspots}
             fx={exhibitFx}
             rocketRunning={exhibitLive}
+            rocketMounted={introDone || exhibitLive}
             starsRunning={voidLive}
             partnersTitle={partnersTitle}
             partnersAria={partnersAria}
@@ -1284,9 +1285,7 @@ export function LandingHero({
         logoSrc={logoSrc}
         stage={
           <div className="hero-rocket" aria-hidden="true">
-            {budget.dissolve || flybyLive ? (
-              <HeroRocket poseRef={rocketPose} running={flybyLive} />
-            ) : null}
+            <HeroRocket poseRef={rocketPose} running={flybyLive} />
           </div>
         }
       >
