@@ -392,12 +392,39 @@ export function PixelatedCanvas({
         : null;
     if (observer && canvas.parentElement) observer.observe(canvas.parentElement);
 
+    // The dots are painted once and then left alone. A 2D canvas can lose its
+    // backing store (GPU reset, tab hibernation) and come back blank, so paint
+    // again whenever the browser hands the context back or the logo scrolls
+    // into view. A running loop repaints on its own.
+    const repaint = () => {
+      if (cancelled || !started || raf) return;
+      paintFrame(false);
+    };
+    const onContextRestored = () => {
+      if (cancelled || !started) return;
+      // The restored context comes back with a default transform.
+      compute();
+      repaint();
+    };
+    const onVisible = () => {
+      if (!document.hidden) repaint();
+    };
+    const inView = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) repaint();
+    });
+    inView.observe(canvas);
+    canvas.addEventListener('contextrestored', onContextRestored);
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
       cancelled = true;
       stopLoop();
       rt.startLoop = null;
       rt.dims = null;
       observer?.disconnect();
+      inView.disconnect();
+      canvas.removeEventListener('contextrestored', onContextRestored);
+      document.removeEventListener('visibilitychange', onVisible);
       img.removeEventListener('load', start);
     };
   }, [

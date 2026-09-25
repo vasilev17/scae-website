@@ -197,9 +197,15 @@ export function mountDissolve({
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     renderer.getDrawingBufferSize(buf);
+    if (capture.width === buf.x && capture.height === buf.y) return;
     capture.width = buf.x;
     capture.height = buf.y;
     uniforms.uResolution.value.copy(buf);
+    // three allocates canvas textures with immutable storage on first upload
+    // and only sub-uploads afterwards. A resized capture needs a fresh GPU
+    // texture, otherwise the old frame stays in the unwritten region.
+    texture.dispose();
+    texture.needsUpdate = true;
   };
 
   sizeTo(container.clientWidth, container.clientHeight);

@@ -226,7 +226,9 @@ export function SpecularButton({
     let dead = false;
     const resize = (entry?: ResizeObserverEntry) => {
       if (dead) return;
-      const size = entry?.contentBoxSize?.[0];
+      // Border box: the ring hugs the padded button, same as `offsetWidth`
+      // on the initial measure. The content box would shrink it by the padding.
+      const size = entry?.borderBoxSize?.[0];
       const w = size?.inlineSize ?? btn.offsetWidth;
       const h = size?.blockSize ?? btn.offsetHeight;
       if (w < 2 || h < 2) return;

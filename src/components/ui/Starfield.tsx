@@ -229,6 +229,7 @@ export function Starfield({
       const oldW = sd.current.w;
       const oldH = sd.current.h;
       const oldZ = sd.current.z;
+      if (div && div.clientWidth === oldW && div.clientHeight === oldH) return;
 
       measureViewport();
 
@@ -248,17 +249,22 @@ export function Starfield({
         star[4] = sd.current.y + (star[1] / star[2]) * ratio;
       });
 
-      if (still) {
+      // Resizing the canvas wipes it. Repaint unless the loop will anyway.
+      if (still || animationFrameRef.current === null) {
         draw();
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    // Observe the host, not the window: inside a ScrollTrigger pin the host
+    // takes its new size only after the (debounced) refresh, well after the
+    // window `resize` event has fired.
+    const observer = new ResizeObserver(handleResize);
+    if (div) observer.observe(div);
 
     return () => {
       stop();
       loopRef.current = null;
-      window.removeEventListener('resize', handleResize);
+      observer.disconnect();
     };
   }, [bgColor, starColor, speed, quantity, warpRef, warpReactive, frozen]);
 

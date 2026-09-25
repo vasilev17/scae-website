@@ -326,6 +326,8 @@ export function LandingHero({
   const [menuOpen, setMenuOpen] = useState(false);
   const [exhibitFx, setExhibitFx] = useState(false);
   const flybyRef = useRef<gsap.core.Timeline | null>(null);
+  // Panes have parked at rest. Until then the intro owns their yPercent.
+  const panesParkedRef = useRef(false);
   // While a menu jump settles, void fades must snap — not tween.
   const jumpingRef = useRef(false);
   const snapSceneRef = useRef<() => void>(() => {});
@@ -455,6 +457,20 @@ export function LandingHero({
       if (!root || !gate || !hero) return;
 
       const geometry = readGateGeometry(gate);
+      const panes = gate.querySelectorAll('.gate-pane-group');
+      // The rest pose lives in CSS custom properties that change with the
+      // viewport breakpoints. Re-park the panes on every ScrollTrigger refresh
+      // (resize, orientation) so the nav band stays where the stylesheet puts it.
+      const parkPanes = () => {
+        if (!panesParkedRef.current || menuGate.current.blend > 0) return;
+        const next = readGateGeometry(gate);
+        gsap.set(panes, {
+          yPercent: perGatePane(next.restTop, next.restBottom),
+          transformOrigin: gateFlybyOrigin(next),
+        });
+      };
+      ScrollTrigger.addEventListener('refresh', parkPanes);
+
       const media = gsap.matchMedia(root);
 
       media.add(
@@ -480,6 +496,7 @@ export function LandingHero({
           };
 
           if (staticPath) {
+            panesParkedRef.current = true;
             gsap.set('.gate-pane-group', {
               yPercent: perGatePane(geometry.restTop, geometry.restBottom),
               willChange: 'auto',
@@ -551,6 +568,7 @@ export function LandingHero({
             return;
           }
 
+          panesParkedRef.current = false;
           gsap.set(rocketPose.current, { ...REST_ROCKET_POSE });
           gsap.set(portal.current, { ...REST_PORTAL });
           gsap.set('.landing-copy', { autoAlpha: 0 });
@@ -564,9 +582,12 @@ export function LandingHero({
           gsap.set('.hero-rocket', { yPercent: ROCKET_ENTRY });
           if (exhibit) gsap.set(exhibit, { opacity: 0 });
 
-          const scrollLength = window.matchMedia(PHONE_QUERY).matches
-            ? SCROLL_LENGTH_NARROW
-            : SCROLL_LENGTH;
+          // Function form: re-read on every refresh, so a window dragged across
+          // the phone breakpoint gets the matching scroll length.
+          const scrollLength = () =>
+            window.matchMedia(PHONE_QUERY).matches
+              ? SCROLL_LENGTH_NARROW
+              : SCROLL_LENGTH;
 
           const flyby = gsap.timeline({
             scrollTrigger: {
@@ -922,6 +943,9 @@ export function LandingHero({
                 setIntroDone(true);
                 if (ROCKET_PORTAL) setExhibitFx(true);
                 flyby.scrollTrigger?.enable();
+                // Before refresh: the refresh below re-parks the panes against
+                // whatever the viewport became while the doors were opening.
+                panesParkedRef.current = true;
                 ScrollTrigger.refresh();
               },
             })
@@ -982,6 +1006,8 @@ export function LandingHero({
       );
 
       return () => {
+        ScrollTrigger.removeEventListener('refresh', parkPanes);
+        panesParkedRef.current = false;
         flybyRef.current = null;
         root.classList.remove('is-static');
         snapSceneRef.current = () => {};
